@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "vehiculos")
+@Table(
+    name = "vehiculos",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_vehiculo_usuario_marca_modelo_anio",
+                          columnNames = {"usuario_id", "marca", "modelo", "anio"})
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -15,28 +21,35 @@ public class Vehiculo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "usuario_id", nullable = false)
-    private Usuario usuario;
+    @Column(name = "usuario_id", nullable = false)
+    private Long usuarioId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String marca;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 100)
     private String modelo;
 
     @Column(nullable = false)
     private Integer anio;
 
-    @Column(nullable = false)
-    private String combustible;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Combustible combustible;
 
     @Column
     private Long kilometraje;
 
-    @Column
+    @Column(length = 20)
     private String matricula;
 
-    @Column(nullable = false, updatable = false)
-    private java.time.Instant createdAt = java.time.Instant.now();
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private java.time.Instant createdAt;
+
+    @PrePersist
+    void onCreate() {
+        if (createdAt == null) {
+            createdAt = java.time.Instant.now();
+        }
+    }
 }
