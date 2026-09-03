@@ -1,0 +1,34 @@
+# Maven
+target/
+!.mvn/wrapper/
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# Docker
+docker-compose.override.yml
+
+# Test reports
+**/target/surefire-reports/
+**/target/failsafe-reports/
