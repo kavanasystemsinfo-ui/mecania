@@ -17,10 +17,20 @@
 		<java.version>21</java.version>
 		<!-- Versions of dependencies -->
 		<postgresql.version>42.7.3</postgresql.version>
-		<pgvector.version>0.5.0</pgvector.version>
 		<lombok.version>1.18.34</lombok.version>
 		<testcontainers.version>1.19.8</testcontainers.version>
 	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>${project.parent.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<!-- Spring Boot -->
 		<dependency>
@@ -39,10 +49,7 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-openapi</artifactId>
-		</dependency>
+		<!-- Flyway -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>
@@ -52,12 +59,6 @@
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<version>${postgresql.version}</version>
-		</dependency>
-		<!-- pgvector -->
-		<dependency>
-			<groupId>com.github.tgvashchenko</groupId>
-			<artifactId>jdbc-pgvector</artifactId>
-			<version>${pgvector.version}</version>
 		</dependency>
 		<!-- Lombok -->
 		<dependency>
@@ -100,6 +101,13 @@
 					<compilerArgs>
 						<compilerArg>-parameters</compilerArg>
 					</compilerArgs>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 			<!-- Surefire plugin for tests -->
