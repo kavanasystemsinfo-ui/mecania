@@ -8,6 +8,8 @@
     <style>
         body { padding-top: 4rem; }
         .sticky-top { z-index: 1020; }
+        .document-row { cursor: pointer; }
+        .document-row:hover { background-color: #f8f9fa; }
     </style>
 </head>
 <body>
@@ -48,51 +50,97 @@
 
 <!-- Modal -->
 <div class="modal fade" id="vehicleModal" tabindex="-1" aria-labelledby="vehicleModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="vehicleModalLabel">Vehículo</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="vehicleForm">
-                    <input type="hidden" id="vehicleId">
-                    <div class="mb-3">
-                        <label class="form-label">Usuario ID</label>
-                        <input type="number" class="form-control" id="usuarioId" required>
+                <!-- Nav tabs -->
+                <ul class="nav nav-tabs" id="vehicleTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="vehicle-tab" data-bs-toggle="tab" data-bs-target="#vehicle-tab-pane" type="button" role="tab" aria-controls="vehicle-tab-pane" aria-selected="true">Vehículo</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#document-tab-pane" type="button" role="tab" aria-controls="document-tab-pane" aria-selected="false">Documentos</button>
+                    </li>
+                </ul>
+
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <!-- Vehicle tab -->
+                    <div class="tab-pane fade show active" id="vehicle-tab-pane" role="tabpanel" aria-labelledby="vehicle-tab">
+                        <form id="vehicleForm">
+                            <input type="hidden" id="vehicleId">
+                            <div class="mb-3">
+                                <label class="form-label">Usuario ID</label>
+                                <input type="number" class="form-control" id="usuarioId" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Marca</label>
+                                <input type="text" class="form-control" id="marca" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Modelo</label>
+                                <input type="text" class="form-control" id="modelo" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Año</label>
+                                <input type="number" class="form-control" id="anio" min="1900" max="2100" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Combustible</label>
+                                <select class="form-select" id="combustible" required>
+                                    <option value="">Seleccione...</option>
+                                    <option value="GASOLINA">Gasolina</option>
+                                    <option value="DIESEL">Diésel</option>
+                                    <option value="HIBRIDO">Híbrido</option>
+                                    <option value="ELECTRICO">Eléctrico</option>
+                                    <option value="OTRO">Otro</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Kilometraje</label>
+                                <input type="number" class="form-control" id="kilometraje" min="0" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Matrícula</label>
+                                <input type="text" class="form-control" id="matricula" required>
+                            </div>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Marca</label>
-                        <input type="text" class="form-control" id="marca" required>
+
+                    <!-- Documents tab -->
+                    <div class="tab-pane fade" id="document-tab-pane" role="tabpanel" aria-labelledby="document-tab">
+                        <div id="documentAlertContainer"></div>
+                        <div class="mb-3">
+                            <label class="form-label">Subir documento para este vehículo</label>
+                            <input class="form-control" type="file" id="documentFile" accept=".pdf,.txt,.docx">
+                            <div class="form-text">Formatos permitidos: PDF, TXT, DOCX. Máximo 10 MB.</div>
+                        </div>
+                        <button class="btn btn-primary me-2" id="uploadDocumentBtn">Subir Documento</button>
+                        <button class="btn btn-outline-secondary" id="refreshDocumentsBtn">Actualizar lista</button>
+                        <hr>
+                        <h6>Documentos subidos:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-borderless" id="documentTable">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Nombre</th>
+                                        <th>Tipo</th>
+                                        <th>Tamaño</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="documentTableBody">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Modelo</label>
-                        <input type="text" class="form-control" id="modelo" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Año</label>
-                        <input type="number" class="form-control" id="anio" min="1900" max="2100" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Combustible</label>
-                        <select class="form-select" id="combustible" required>
-                            <option value="">Seleccione...</option>
-                            <option value="GASOLINA">Gasolina</option>
-                            <option value="DIESEL">Diésel</option>
-                            <option value="HIBRIDO">Híbrido</option>
-                            <option value="ELECTRICO">Eléctrico</option>
-                            <option value="OTRO">Otro</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Kilometraje</label>
-                        <input type="number" class="form-control" id="kilometraje" min="0" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Matrícula</label>
-                        <input type="text" class="form-control" id="matricula" required>
-                    </div>
-                </form>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -107,9 +155,12 @@
 let apiBase = '/api/vehiculos';
 let editMode = false;
 let editingId = null;
+let currentVehicleId = null; // Currently selected vehicle for document tab
 
-function showAlert(message, type = 'info') {
-    const container = document.getElementById('alertContainer');
+function showAlert(message, type = 'info', containerId = 'alertContainer') {
+    const container = document.getElementById(containerId);
+    // Clear existing alerts
+    container.innerHTML = '';
     const alert = document.createElement('div');
     alert.className = `alert alert-${type} alert-dismissible fade show`;
     alert.role = 'alert';
@@ -121,6 +172,10 @@ function showAlert(message, type = 'info') {
     setTimeout(() => {
         alert.remove();
     }, 5000);
+}
+
+function showDocumentAlert(message, type = 'info') {
+    showAlert(message, type, 'documentAlertContainer');
 }
 
 async function loadVehicles() {
@@ -162,6 +217,134 @@ function clearForm() {
     const modalTitle = document.getElementById('vehicleModalLabel');
     modalTitle.textContent = 'Vehículo';
     document.getElementById('saveBtn').textContent = 'Guardar';
+}
+
+function loadDocumentsForVehicle(vehicleId) {
+    currentVehicleId = vehicleId;
+    // Update tab title
+    document.getElementById('document-tab').textContent = `Documentos (vehículo ${vehicleId})`;
+    // Load documents
+    fetch(`${apiBase}/${vehicleId}/documentos`)
+        .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+        })
+        .then(docs => {
+            const tbody = document.getElementById('documentTableBody');
+            tbody.innerHTML = '';
+            docs.forEach((doc, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'document-row';
+                tr.onclick = () => previewDocument(doc.id, doc.nombre);
+                tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${doc.nombre}</td>
+                    <td>${doc.tipo}</td>
+                    <td>${formatFileSize(doc.tamanoBytes)}</td>
+                    <td><span class="badge bg-${getEstadoBadgeColor(doc.estado)}">${doc.estado}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="downloadDocument(${doc.id})">Descargar</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            showDocumentAlert('Error al cargar documentos: ' + err.message, 'danger');
+            console.error(err);
+        });
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getEstadoBadgeColor(estado) {
+    switch (estado) {
+        case 'LISTO': return 'success';
+        case 'PROCESANDO': return 'warning';
+        case 'ERROR': return 'danger';
+        default: return 'secondary';
+    }
+}
+
+async function previewDocument(documentoId, filename) {
+    // For now, just try to download - in a real app we might preview PDFs in browser
+    downloadDocument(documentoId);
+}
+
+async function downloadDocument(documentoId) {
+    if (!currentVehicleId) {
+        showDocumentAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/documentos/${documentoId}/download`);
+        if (!resp.ok) {
+            const errorData = await resp.json();
+            throw new Error(errorData.message || `HTTP ${resp.status}`);
+        }
+        const blob = await resp.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'documento';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (err) {
+        showDocumentAlert('Error al descargar documento: ' + err.message, 'danger');
+        console.error(err);
+    }
+}
+
+async function uploadDocument() {
+    if (!currentVehicleId) {
+        showDocumentAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    const fileInput = document.getElementById('documentFile');
+    const file = fileInput.files[0];
+    if (!file) {
+        showDocumentAlert('Por favor seleccione un archivo para subir', 'warning');
+        return;
+    }
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+        showDocumentAlert('Tipo de archivo no permitido. Use PDF, TXT o DOCX.', 'danger');
+        return;
+    }
+    // Validate size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showDocumentAlert('El archivo es demasiado grande. Máximo 10 MB permitido.', 'danger');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/documentos`, {
+            method: 'POST',
+            body: formData
+        });
+        if (!resp.ok) {
+            const errorData = await resp.json();
+            throw new Error(errorData.message || `HTTP ${resp.status}`);
+        }
+        showDocumentAlert('Documento subido exitosamente', 'success');
+        fileInput.value = ''; // Clear file input
+        await loadDocumentsForVehicle(currentVehicleId); // Refresh list
+    } catch (err) {
+        showDocumentAlert('Error al subir documento: ' + err.message, 'danger');
+        console.error(err);
+    }
 }
 
 document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
@@ -236,6 +419,12 @@ function editVehicle(id) {
             const modalEl = document.getElementById('vehicleModal');
             const modal = new bootstrap.Modal(modalEl);
             modal.show();
+            // Load documents for this vehicle when editing
+            loadDocumentsForVehicle(v.id);
+            // Switch to documents tab
+            const documentTabEl = document.getElementById('document-tab');
+            const documentTab = new bootstrap.Tab(documentTabEl);
+            documentTab.show();
         })
         .catch(err => {
             showAlert('Error al cargar vehículo: ' + err.message, 'danger');
@@ -258,6 +447,23 @@ function deleteVehicle(id) {
 }
 
 document.getElementById('refreshBtn').addEventListener('click', loadVehicles);
+document.getElementById('refreshDocumentsBtn').addEventListener('click', () => {
+    if (currentVehicleId) {
+        loadDocumentsForVehicle(currentVehicleId);
+    } else {
+        showDocumentAlert('Por favor seleccione un vehículo primero', 'warning');
+    }
+});
+document.getElementById('uploadDocumentBtn').addEventListener('click', uploadDocument);
+document.getElementById('documentFile').addEventListener('change', function() {
+    // Show filename next to button when file selected
+    const fileName = this.value.split('\\').pop().split('/').pop();
+    if (fileName) {
+        this.nextElementSibling.textContent = `Archivo seleccionado: ${fileName}`;
+    } else {
+        this.nextElementSibling.textContent = 'Formatos permitidos: PDF, TXT, DOCX. Máximo 10 MB.';
+    }
+});
 
 // Initial load
 loadVehicles();
