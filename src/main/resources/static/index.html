@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mecania - Registro de Vehículos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 4rem; }
+        .sticky-top { z-index: 1020; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Mecania</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="#" id="refreshBtn">Actualizar lista</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h1 class="mb-4">Registro de Vehículos</h1>
+    <div id="alertContainer"></div>
+    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#vehicleModal">Crear Nuevo Vehículo</button>
+
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>#</th>
+                <th>Usuario ID</th>
+                <th>Marca</th>
+                <th>Modelo</th>
+                <th>Año</th>
+                <th>Combustible</th>
+                <th>Kilometraje</th>
+                <th>Matrícula</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="vehicleTableBody">
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="vehicleModal" tabindex="-1" aria-labelledby="vehicleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="vehicleModalLabel">Vehículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="vehicleForm">
+                    <input type="hidden" id="vehicleId">
+                    <div class="mb-3">
+                        <label class="form-label">Usuario ID</label>
+                        <input type="number" class="form-control" id="usuarioId" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Marca</label>
+                        <input type="text" class="form-control" id="marca" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Modelo</label>
+                        <input type="text" class="form-control" id="modelo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Año</label>
+                        <input type="number" class="form-control" id="anio" min="1900" max="2100" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Combustible</label>
+                        <select class="form-select" id="combustible" required>
+                            <option value="">Seleccione...</option>
+                            <option value="GASOLINA">Gasolina</option>
+                            <option value="DIESEL">Diésel</option>
+                            <option value="HIBRIDO">Híbrido</option>
+                            <option value="ELECTRICO">Eléctrico</option>
+                            <option value="OTRO">Otro</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kilometraje</label>
+                        <input type="number" class="form-control" id="kilometraje" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Matrícula</label>
+                        <input type="text" class="form-control" id="matricula" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="saveBtn">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let apiBase = '/api/vehiculos';
+let editMode = false;
+let editingId = null;
+
+function showAlert(message, type = 'info') {
+    const container = document.getElementById('alertContainer');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.role = 'alert';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    container.appendChild(alert);
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+async function loadVehicles() {
+    try {
+        const resp = await fetch(apiBase);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const vehicles = await resp.json();
+        const tbody = document.getElementById('vehicleTableBody');
+        tbody.innerHTML = '';
+        vehicles.forEach((v, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td>${v.usuarioId}</td>
+                <td>${v.marca}</td>
+                <td>${v.modelo}</td>
+                <td>${v.anio}</td>
+                <td>${v.combustible}</td>
+                <td>${v.kilometraje}</td>
+                <td>${v.matricula}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="editVehicle(${v.id})">Editar</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteVehicle(${v.id})">Eliminar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        showAlert('Error al cargar vehículos: ' + err.message, 'danger');
+        console.error(err);
+    }
+}
+
+function clearForm() {
+    document.getElementById('vehicleForm').reset();
+    document.getElementById('vehicleId').value = '';
+    editMode = false;
+    editingId = null;
+    const modalTitle = document.getElementById('vehicleModalLabel');
+    modalTitle.textContent = 'Vehículo';
+    document.getElementById('saveBtn').textContent = 'Guardar';
+}
+
+document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const vehicle = {
+        usuarioId: parseInt(document.getElementById('usuarioId').value),
+        marca: document.getElementById('marca').value.trim(),
+        modelo: document.getElementById('modelo').value.trim(),
+        anio: parseInt(document.getElementById('anio').value),
+        combustible: document.getElementById('combustible').value,
+        kilometraje: parseInt(document.getElementById('kilometraje').value),
+        matricula: document.getElementById('matricula').value.trim()
+    };
+    // Basic validation
+    if (!vehicle.usuarioId || !vehicle.marca || !vehicle.modelo || !vehicle.anio || !vehicle.combustible || vehicle.kilometraje === null || !vehicle.matricula) {
+        showAlert('Por favor complete todos los campos', 'warning');
+        return;
+    }
+    try {
+        let resp;
+        if (editMode && editingId) {
+            resp = await fetch(`${apiBase}/${editingId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(vehicle)
+            });
+        } else {
+            resp = await fetch(apiBase, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(vehicle)
+            });
+        }
+        if (!resp.ok) {
+            const errorData = await resp.json();
+            throw new Error(errorData.message || `HTTP ${resp.status}`);
+        }
+        const newVehicle = await resp.json();
+        showAlert('Vehículo guardado exitosamente', 'success');
+        // Close modal
+        const modalEl = document.getElementById('vehicleModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+        clearForm();
+        await loadVehicles();
+    } catch (err) {
+        showAlert('Error: ' + err.message, 'danger');
+        console.error(err);
+    }
+});
+
+function editVehicle(id) {
+    editMode = true;
+    editingId = id;
+    fetch(`${apiBase}/${id}`)
+        .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+        })
+        .then(v => {
+            document.getElementById('vehicleId').value = v.id;
+            document.getElementById('usuarioId').value = v.usuarioId;
+            document.getElementById('marca').value = v.marca;
+            document.getElementById('modelo').value = v.modelo;
+            document.getElementById('anio').value = v.anio;
+            document.getElementById('combustible').value = v.combustible;
+            document.getElementById('kilometraje').value = v.kilometraje;
+            document.getElementById('matricula').value = v.matricula;
+            const modalTitle = document.getElementById('vehicleModalLabel');
+            modalTitle.textContent = `Editar Vehículo #${v.id}`;
+            document.getElementById('saveBtn').textContent = 'Actualizar';
+            const modalEl = document.getElementById('vehicleModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        })
+        .catch(err => {
+            showAlert('Error al cargar vehículo: ' + err.message, 'danger');
+            console.error(err);
+        });
+}
+
+function deleteVehicle(id) {
+    if (!confirm('¿Está seguro de eliminar este vehículo?')) return;
+    fetch(`${apiBase}/${id}`, {method: 'DELETE'})
+        .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            showAlert('Vehículo eliminado exitosamente', 'success');
+            return loadVehicles();
+        })
+        .catch(err => {
+            showAlert('Error al eliminar vehículo: ' + err.message, 'danger');
+            console.error(err);
+        });
+}
+
+document.getElementById('refreshBtn').addEventListener('click', loadVehicles);
+
+// Initial load
+loadVehicles();
+</script>
+</body>
+</html>
