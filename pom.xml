@@ -29,6 +29,7 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+    <!-- pgvector extension is used via PostgreSQL; for Hibernate mapping consider adding hibernate-types -->
 		</dependencies>
 	</dependencyManagement>
 	<dependencies>

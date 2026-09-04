@@ -83,3 +83,25 @@ curl -X DELETE http://localhost:8080/api/vehiculos/1
 
 - `mvn test` ejecuta los tests unitarios (Surefire): `VehiculoServiceTest` (7) y `VehiculoControllerTest` (5).
 - `mvn verify` añade los tests de integración (Failsafe): `VehiculoControllerIT` (3) con H2 en memoria, perfil `test`.
+
+## Vector Store (Optional)
+
+The project includes an optional `DocumentEmbedding` entity and repository for storing vector embeddings of technical manuals, user guides, or FAQ entries. This enables similarity search for retrieving relevant documents when answering user questions about vehicle issues, parts, or procedures.
+
+### How to use
+1. Ensure PostgreSQL has the pgvector extension enabled (the `docker-compose.yml` already uses `ankane/pgvector:latest`).
+2. The `DocumentEmbedding` entity maps a `double[]` field to a `vector(384)` column (adjust dimension as needed).
+3. To add documents:
+   - Parse manuals/user guides into text chunks.
+   - Generate embeddings using a sentence-transformer model (e.g., `all-MiniLM-L6-v2` from Hugging Face).
+   - Save each chunk with its embedding via `DocumentEmbeddingRepository`.
+4. To search:
+   - Embed the user query with the same model and perform a cosine similarity query against the `embedding` column using pgvector operators (`<=>` for distance).
+   - Example native SQL: `SELECT * FROM document_embeddings ORDER BY embedding <=> ? LIMIT 5` where `?` is the query vector.
+
+### Future endpoints
+You could add new endpoints under `/api/documentos` or `/api/consultas` to:
+- `POST /api/documentos` for ingesting a text chunk with its embedding.
+- `GET /api/consultas?pregunta=...` that embeds the question, searches the vector store, and returns the top matches.
+
+Note: This is optional scaffolding; the core vehicle management API works without it.
