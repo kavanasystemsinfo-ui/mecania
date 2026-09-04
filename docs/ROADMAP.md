@@ -4,13 +4,13 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 
 ## Próximas fases (orden estimado)
 
-### Fase 1: Almacenamiento y gestión de manuales (actual)
-- Subida de archivos PDF/TXT/DOCX desde el vehículo del usuario.
-- Almacenamiento en disco o blob (por definir).
-- Entidad `Documento` y `Fragmento` reactivadas con relación a `Vehiculo`.
-- Endpoints: `POST /api/documentos`, `GET /api/documentos/{vehiculoId}`, etc.
-- Tests unitarios y de integración.
-- ADR correspondiente (elección de almacenamiento: disco local vs S3 vs base64 en BD).
+### Fase 1: Almacenamiento y gestión de manuales ✅
+- ~~Subida de archivos PDF/TXT/DOCX desde el vehículo del usuario.~~ ✅ implementado 2026-09-04
+- ~~Almacenamiento en disco o blob (por definir).~~ ✅ disco local, abstracto vía `AlmacenamientoArchivos`
+- ~~Entidad `Documento` y `Fragmento` reactivadas con relación a `Vehiculo`.~~ ✅
+- ~~Endpoints: `POST /api/documentos`, `GET /api/documentos/{vehiculoId}`, etc.~~ ✅ `POST/GET /api/vehiculos/{vehiculoId}/documentos[/...]`
+- ~~Tests unitarios y de integración.~~ ✅ 14 tests nuevos (10 service + 4 storage)
+- ~~ADR correspondiente (elección de almacenamiento: disco local vs S3 vs base64 en BD).~~ ✅ ADR 003
 
 ### Fase 2: Procesamiento y embeddings (vector store)
 - Extracción de texto de PDF/TXT (PDFBox o Tika).

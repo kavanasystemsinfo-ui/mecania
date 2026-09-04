@@ -63,6 +63,7 @@ graph LR
 
 - [ADR 001: Stack Tecnológico](docs/adr/001-stack-tecnologico.md) — decisión inicial de stack.
 - [ADR 002: Seguridad abierta en fase MVP](docs/adr/002-seguridad-abierta-mvp.md) — decisión consciente de `permitAll()` para acelerar validación.
+- [ADR 003: Estrategia de almacenamiento de manuales](docs/adr/003-almacenamiento-manuales-disco-local.md) — disco local ahora, Supabase Storage o S3 cuando se despliegue a producción real.
 - [docs/HISTORY.md](docs/HISTORY.md) — evolución y decisiones descartadas.
 - [docs/METRICS.md](docs/METRICS.md) — qué cubren los tests (no solo cuántos).
 - [docs/ROADMAP.md](docs/ROADMAP.md) — plan honesto de fases futuras.
@@ -130,6 +131,26 @@ La aplicación estará disponible en `http://localhost:8080`.
   ```bash
   curl -X DELETE http://localhost:8080/api/vehiculos/1
   ```
+
+#### Documentos por vehículo (subida de manuales)
+
+- **Subir manual** (PDF, TXT o DOCX, máximo 10 MB)
+  ```bash
+  curl -X POST http://localhost:8080/api/vehiculos/1/documentos \
+    -F "file=@/ruta/al/manual.pdf"
+  ```
+
+- **Listar manuales del vehículo**
+  ```bash
+  curl http://localhost:8080/api/vehiculos/1/documentos
+  ```
+
+- **Descargar un manual**
+  ```bash
+  curl -O http://localhost:8080/api/vehiculos/1/documentos/5/download
+  ```
+
+La implementación actual guarda los archivos en disco local (ver [ADR 003](docs/adr/003-almacenamiento-manuales-disco-local.md)). La interfaz `AlmacenamientoArchivos` está pensada para sustituirse por Supabase Storage o S3 sin tocar el resto del código.
 
 > En la fase MVP todos los endpoints están abiertos (`permitAll()`). Ver [ADR 002](docs/adr/002-seguridad-abierta-mvp.md) para detalles.
 
