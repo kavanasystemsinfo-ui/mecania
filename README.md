@@ -5,7 +5,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![pgvector](https://img.shields.io/badge/pgvector-enabled-orange)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-lightgrey)
-![Tests](https://img.shields.io/badge/tests-12-brightgreen)
+![Tests](https://img.shields.io/badge/tests-68-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 🎯 Qué es Mecania y por qué existe (como pieza de portafolio)

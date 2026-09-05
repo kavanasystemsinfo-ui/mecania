@@ -34,7 +34,7 @@ Además, hay un problema operativo: el cálculo de embeddings es lento y, si se 
 - **Proveedor por defecto**: OpenRouter (mismo proveedor que la fase de chat RAG, evita fragmentar el ecosistema de credenciales).
 - **Modelo por defecto**: `text-embedding-3-small` (1536 dimensiones, ~$0.02 por millón de tokens, latencia media).
 - **Dimensión**: configurable vía `mecania.embedding.dimension` (default 1536). El modelo concreto se elige en `mecania.embedding.model`.
-- **Implementación**: interfaz `EmbeddingService` con `OpenRouterEmbeddingService`. La llamada HTTP se hace con el `RestClient` de Spring Boot 3 (ya incluido). En tests se usa un mock.
+- **Implementación**: interfaz `EmbeddingService` con `OpenRouterEmbeddingService`. La llamada HTTP se hace con `RestTemplate` (bean `embeddingRestTemplate` en `RestClientConfig`, timeouts 10s/30s). En tests se usa un mock.
 - **Si la API falla**: el documento se marca como `ERROR` con el mensaje de la excepción. No se reintenta automáticamente en esta fase.
 
 ### Persistencia del vector
@@ -50,8 +50,9 @@ Además, hay un problema operativo: el cálculo de embeddings es lento y, si se 
 - **Spring `@Async`** sobre `DocumentoProcessor.procesar(Long vehiculoId, Long documentoId)`.
 - **`@EnableAsync`** en una clase de configuración `AsyncConfig`.
 - **Pool dedicado**: `ThreadPoolTaskExecutor` con `corePoolSize=2`, `maxPoolSize=4`, `queueCapacity=100`, `threadNamePrefix="mecania-proc-"`. Configurable vía properties.
-- **Disparo**: el `DocumentoService.subirDocumento` deja el documento en estado `PROCESANDO` y llama al método async. La transacción del `subirDocumento` se commitea ANTES de lanzar el async (importante: el `@Async` se ejecuta en otro hilo y no puede leer entidades no commiteadas).
+- **Disparo**: el `DocumentoService.subirDocumento` deja el documento en estado `PROCESANDO` y publica un evento `DocumentoSubidoEvent`. Un listener `@TransactionalEventListener(phase = AFTER_COMMIT)` dispara el procesamiento async SOLO cuando la transacción ya ha commiteado. ⚠️ La primera versión asumía que "la transacción se commitea antes de lanzar el async" — eso era FALSO (carrera real): @Async lanzado dentro del método transaccional puede arrancar antes del commit y no ver el documento (quedaba en PROCESANDO para siempre). Corregido 2026-09-04 con el patrón de evento AFTER_COMMIT.
 - **Manejo de errores**: si el procesamiento lanza una excepción, el documento se marca como `ERROR` con el mensaje. El usuario lo verá en el listado.
+- **Atomicidad**: el paso transaccional (`DocumentoProcesadorTransaccional`) usa `@Transactional(rollbackFor = Exception.class)` — OBLIGATORIO porque `EmbeddingException`/`ExtractionException` son checked y el default de Spring solo revierte unchecked. Sin eso, un fallo a mitad commitea los fragmentos ya guardados (detectado por test de integración con fallo en el 2º fragmento). Separar el paso transaccional en un bean propio también evita la self-invocation de `@Transactional` (llamada interna no pasa por el proxy).
 
 ## Alternativas consideradas
 
