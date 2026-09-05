@@ -81,23 +81,4 @@ public class DocumentoController {
             return ResponseEntity.status(500).build();
         }
     }
-
-    // For testing purposes, we expose a method to mark as ready/error (not part of public API)
-    // In a real app, this would be triggered by an async processing step.
-    @PostMapping("/{documentoId}/marcar-listo")
-    public ResponseEntity<Void> marcarListo(
-            @PathVariable Long vehiculoId,
-            @PathVariable Long documentoId) {
-        documentoService.marcarComoListo(documentoId, vehiculoId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{documentoId}/marcar-error")
-    public ResponseEntity<Void> marcarError(
-            @PathVariable Long vehiculoId,
-            @PathVariable Long documentoId,
-            @RequestParam String mensaje) {
-        documentoService.marcarComoError(documentoId, vehiculoId, mensaje);
-        return ResponseEntity.noContent().build();
-    }
 }

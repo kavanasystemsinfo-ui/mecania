@@ -1,5 +1,6 @@
 package com.kavanamecania.mecania.application;
 
+import com.kavanamecania.mecania.application.evento.DocumentoSubidoEvent;
 import com.kavanamecania.mecania.domain.model.Documento;
 import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
@@ -8,10 +9,12 @@ import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,6 +43,9 @@ class DocumentoServiceTest {
 
     @Mock
     private AlmacenamientoArchivos almacenamientoArchivos;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private DocumentoService documentoService;
@@ -121,11 +127,15 @@ class DocumentoServiceTest {
         assertThat(result.getEstado()).isEqualTo(Documento.EstadoProcesamiento.PROCESANDO);
         assertThat(result.getTamanoBytes()).isEqualTo(validPdf.getSize());
         assertThat(result.getMensajeError()).isNull();
-        assertThat(result.getEmbedding()).isNull();
 
         verify(vehiculoRepository).findById(1L);
         verify(almacenamientoArchivos, times(1)).guardarArchivo(validPdf, "vehiculos/1/documentos");
         verify(documentoRepository).save(any(Documento.class));
+        // El disparo async se hace por evento AFTER_COMMIT (no llamada directa):
+        // verificar que se publica con el id del documento guardado.
+        ArgumentCaptor<DocumentoSubidoEvent> captor = ArgumentCaptor.forClass(DocumentoSubidoEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().documentoId()).isEqualTo(10L);
     }
 
     @Test
@@ -158,11 +168,13 @@ class DocumentoServiceTest {
         assertThat(result.getEstado()).isEqualTo(Documento.EstadoProcesamiento.PROCESANDO);
         assertThat(result.getTamanoBytes()).isEqualTo(validTxt.getSize());
         assertThat(result.getMensajeError()).isNull();
-        assertThat(result.getEmbedding()).isNull();
 
         verify(vehiculoRepository).findById(1L);
         verify(almacenamientoArchivos, times(1)).guardarArchivo(validTxt, "vehiculos/1/documentos");
         verify(documentoRepository).save(any(Documento.class));
+        ArgumentCaptor<DocumentoSubidoEvent> captor = ArgumentCaptor.forClass(DocumentoSubidoEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertThat(captor.getValue().documentoId()).isEqualTo(20L);
     }
 
     @Test
@@ -303,61 +315,5 @@ class DocumentoServiceTest {
         // Then
         assertThat(result.isEmpty()).isTrue();
         verify(documentoRepository).findByIdAndVehiculoId(5L, 1L);
-    }
-
-    @Test
-    void marcarComoListo_cambiaEstado() {
-        // Given
-        Documento doc = Documento.builder()
-                .id(7L)
-                .vehiculo(vehiculo)
-                .nombre("test.pdf")
-                .tipo(Documento.TipoDocumento.PDF)
-                .rutaAlmacenamiento("vehiculos/1/documentos/test.pdf")
-                .estado(Documento.EstadoProcesamiento.PROCESANDO)
-                .tamanoBytes(400L)
-                .mensajeError(null)
-                
-                .build();
-        when(documentoRepository.findByIdAndVehiculoId(7L, 1L))
-                .thenReturn(java.util.Optional.of(doc));
-        when(documentoRepository.save(any(Documento.class))).thenReturn(doc);
-
-        // When
-        documentoService.marcarComoListo(7L, 1L);
-
-        // Then
-        verify(documentoRepository).findByIdAndVehiculoId(7L, 1L);
-        verify(documentoRepository).save(argThat((Documento d) -> 
-                d.getEstado() == Documento.EstadoProcesamiento.LISTO &&
-                d.getMensajeError() == null));
-    }
-
-    @Test
-    void marcarComoError_cambiaEstadoYMensaje() {
-        // Given
-        Documento doc = Documento.builder()
-                .id(8L)
-                .vehiculo(vehiculo)
-                .nombre("test.pdf")
-                .tipo(Documento.TipoDocumento.PDF)
-                .rutaAlmacenamiento("vehiculos/1/documentos/test.pdf")
-                .estado(Documento.EstadoProcesamiento.PROCESANDO)
-                .tamanoBytes(500L)
-                .mensajeError(null)
-                
-                .build();
-        when(documentoRepository.findByIdAndVehiculoId(8L, 1L))
-                .thenReturn(java.util.Optional.of(doc));
-        when(documentoRepository.save(any(Documento.class))).thenReturn(doc);
-
-        // When
-        documentoService.marcarComoError(8L, 1L, "Error de procesamiento");
-
-        // Then
-        verify(documentoRepository).findByIdAndVehiculoId(8L, 1L);
-        verify(documentoRepository).save(argThat((Documento d) -> 
-                d.getEstado() == Documento.EstadoProcesamiento.ERROR &&
-                d.getMensajeError().equals("Error de procesamiento")));
     }
 }

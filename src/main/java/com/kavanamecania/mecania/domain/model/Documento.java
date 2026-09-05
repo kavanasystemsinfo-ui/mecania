@@ -50,11 +50,10 @@ public class Documento {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    /**
-     * For future RAG phase: vector embedding of processed text chunks
-     * Stored as double array for now; will be migrated to pgvector vector type later.
-     */
-    private double[] embedding; // Will be populated in phase 2
+    // NOTA: El embedding se calcula por fragmento, no por documento entero.
+    // Hibernate-core no soporta tipo vector de pgvector; ADR 004 documenta que la
+    // persistencia de embeddings se hará con migración SQL manual + queries nativas
+    // cuando llegue la fase 4 (chat RAG). Por eso este campo no existe todavía.
 
     @PrePersist
     void onCreate() {

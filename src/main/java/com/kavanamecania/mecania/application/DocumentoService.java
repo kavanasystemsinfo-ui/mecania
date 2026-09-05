@@ -1,10 +1,12 @@
 package com.kavanamecania.mecania.application;
 
+import com.kavanamecania.mecania.application.evento.DocumentoSubidoEvent;
 import com.kavanamecania.mecania.domain.model.Documento;
 import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
 import com.kavanamecania.mecania.infrastructure.repository.DocumentoRepository;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,13 +20,16 @@ public class DocumentoService {
     private final DocumentoRepository documentoRepository;
     private final VehiculoRepository vehiculoRepository;
     private final AlmacenamientoArchivos almacenamientoArchivos;
+    private final ApplicationEventPublisher eventPublisher;
 
     public DocumentoService(DocumentoRepository documentoRepository,
                             VehiculoRepository vehiculoRepository,
-                            AlmacenamientoArchivos almacenamientoArchivos) {
+                            AlmacenamientoArchivos almacenamientoArchivos,
+                            ApplicationEventPublisher eventPublisher) {
         this.documentoRepository = documentoRepository;
         this.vehiculoRepository = vehiculoRepository;
         this.almacenamientoArchivos = almacenamientoArchivos;
+        this.eventPublisher = eventPublisher;
     }
 
     public AlmacenamientoArchivos getAlmacenamientoArchivos() {
@@ -79,29 +84,19 @@ public class DocumentoService {
                     .estado(Documento.EstadoProcesamiento.PROCESANDO)
                     .tamanoBytes(file.getSize())
                     .mensajeError(null)
-                    .build(); // createdAt and embedding set by @PrePersist / default null
+                    .build(); // createdAt set by @PrePersist
 
-            return documentoRepository.save(documento);
+            Documento guardado = documentoRepository.save(documento);
+
+            // Publicar evento: un listener AFTER_COMMIT dispara el procesamiento
+            // async SOLO cuando la transacción ya ha commiteado. Evita la carrera
+            // de lanzar @Async dentro de la transacción (ver ADR 004).
+            eventPublisher.publishEvent(new DocumentoSubidoEvent(guardado.getId()));
+
+            return guardado;
         } catch (Exception e) {
             throw new RuntimeException("Error al guardar el archivo: " + e.getMessage(), e);
         }
-    }
-
-    @Transactional
-    public void marcarComoListo(Long documentoId, Long vehiculoId) {
-        Documento documento = documentoRepository.findByIdAndVehiculoId(documentoId, vehiculoId)
-                .orElseThrow(() -> new IllegalArgumentException("Documento no encontrado o no pertenece al vehículo"));
-        documento.setEstado(Documento.EstadoProcesamiento.LISTO);
-        documentoRepository.save(documento);
-    }
-
-    @Transactional
-    public void marcarComoError(Long documentoId, Long vehiculoId, String mensajeError) {
-        Documento documento = documentoRepository.findByIdAndVehiculoId(documentoId, vehiculoId)
-                .orElseThrow(() -> new IllegalArgumentException("Documento no encontrado o no pertenece al vehículo"));
-        documento.setEstado(Documento.EstadoProcesamiento.ERROR);
-        documento.setMensajeError(mensajeError);
-        documentoRepository.save(documento);
     }
 
     /**
