@@ -177,4 +177,4 @@ Proyecto diseñado con criterio arquitectónico propio.
 
 --- 
 
-*Última actualización: $(date '+%Y-%m-%d')*
+*Última actualización: 2026-09-05*
