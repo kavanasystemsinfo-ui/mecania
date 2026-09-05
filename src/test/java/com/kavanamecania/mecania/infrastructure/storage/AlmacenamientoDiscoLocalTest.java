@@ -104,6 +104,43 @@ class AlmacenamientoDiscoLocalTest {
         assertThat(fullPath).doesNotExist();
     }
 
+    @Test
+    void guardarArchivo_con_nombre_travieso_lo_sanitiza_y_no_escapa_del_baseDir() throws IOException {
+        // Un nombre con ../ debe quedarse dentro del baseDir (path traversal).
+        MockMultipartFile file = new MockMultipartFile(
+                "malicious.txt",
+                "../../../etc/cron.d/malicious.txt",
+                "text/plain",
+                "pwned".getBytes()
+        );
+
+        String relativePath = storage.guardarArchivo(file, "vehiculos/1/documentos");
+
+        // La ruta devuelta no debe contener ".."
+        assertThat(relativePath).doesNotContain("..");
+        // Y el archivo debe existir DENTRO del baseDir
+        Path fullPath = tempDir.resolve(relativePath).normalize();
+        assertThat(fullPath).exists();
+        assertThat(fullPath.toAbsolutePath().startsWith(tempDir.toAbsolutePath().normalize()))
+                .as("ruta fuera del baseDir: %s", fullPath)
+                .isTrue();
+        // Y ninguna ruta externa debe haberse creado
+        assertThat(Files.exists(Path.of(tempDir.getParent().toString(), "etc", "cron.d", "malicious.txt")))
+                .isFalse();
+    }
+
+    @Test
+    void leerArchivo_con_ruta_traviesa_se_rechaza() {
+        assertThatThrownBy(() -> storage.leerArchivo("../../secret.txt"))
+                .isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void eliminarArchivo_con_ruta_traviesa_se_rechaza() {
+        assertThatThrownBy(() -> storage.eliminarArchivo("../../secret.txt"))
+                .isInstanceOf(IOException.class);
+    }
+
     // Note: Testing IOException on write failure is complex without mocking low-level IO.
     // We rely on the fact that Java throws IOException on failure; covered by other tests indirectly.
 }
