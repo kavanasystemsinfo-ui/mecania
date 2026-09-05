@@ -2,7 +2,7 @@
 
 **Estado:** Aceptado  
 **Fecha:** 2026-09-03  
-**Contexto:** Necesitamos elegir un stack tecnológico para el proyecto Mecania que permita a Jorge demostrar su capacidad de dirigir agentes de IA sobre cualquier tecnología, y que sea lo suficientemente relevante para el mercado laboral español (especialmente ofertas como la de M&GT Consulting que pide Java, Spring Boot, PostgreSQL). Además, el proyecto debe ser realizable en el tiempo estimado del MVP (3 semanas) y tener una curva de aprendizaje razonable dada la experiencia previa de Jorge en TypeScript/Node/NestJS/React.
+**Contexto:** Necesitamos elegir un stack tecnológico para el proyecto Mecania que sea relevante para el mercado laboral español (especialmente ofertas que piden Java, Spring Boot, PostgreSQL). Además, el proyecto debe ser realizable en el tiempo estimado del MVP (3 semanas) y tener una curva de aprendizaje razonable dada la experiencia previa en TypeScript/Node/NestJS/React.
 
 **Decisión:** Utilizamos el siguiente stack:
 
@@ -27,7 +27,7 @@
   - El frontend se pospone para el MVP, pero el conocimiento de Angular de Jorge puede reutilizarse posteriormente sin perder tiempo en aprender un nuevo framework frontend ahora.
 
 - *Negativas:*
-  - Jorge tiene menos experiencia directa en Java que en TypeScript, pero su metodología de dirigir agentes de IA le permite aprender rápidamente.
+  - Jorge tiene menos experiencia directa en Java que en TypeScript, pero la curva de aprendizaje es razonable para un stack conocido y la documentación es amplia.
   - El tiempo de compilación de Java es mayor que de TypeScript interpretado, pero esto es aceptable para un proyecto de portfolio.
   - La extensión pgvector requiere una versión específica de PostgreSQL (usamos la imagen ankane/pgvector:pg16 en Docker Compose).
 

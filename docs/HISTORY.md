@@ -2,18 +2,17 @@
 
 Evolución del proyecto Mecania y decisiones descartadas.
 
-## 2026-09-04 (Fase 2: procesamiento y embeddings — tras remediación)
+## 2026-09-04 (Fase 2: procesamiento y embeddings)
 
 - **Extracción de texto**: `TextExtractor` con implementaciones PDFBox (PDF), POI (DOCX) y plain UTF-8 (TXT), selección por `TextExtractorFactory`.
 - **Chunking**: `SlidingWindowChunker` (512 chars con overlap 64, ventana deslizante determinista).
-- **Embeddings**: `EmbeddingService` + `OpenRouterEmbeddingService` (modelo por defecto `text-embedding-3-small`). La API key se resuelve en el constructor con una única fuente: property `mecania.embedding.api-key` o fallback env var `OPENROUTER_API_KEY` (se eliminó la doble fuente vía `System.getProperty`, que era una trampa).
+- **Embeddings**: `EmbeddingService` + `OpenRouterEmbeddingService` (modelo por defecto `text-embedding-3-small`). La API key se resuelve en el constructor con una única fuente: property `mecania.embedding.api-key` o fallback env var `OPENROUTER_API_KEY`.
 - **Procesamiento async**: `DocumentoProcessor` (pool `mecania-proc-` 2/4/100) orquesta extracción→chunking→embeddings→persistencia de fragmentos.
-- **Carrera async/commit corregida**: `DocumentoService.subirDocumento` ya NO llama al método async dentro de la transacción. Publica `DocumentoSubidoEvent`; `DocumentoSubidoEventListener` con `@TransactionalEventListener(AFTER_COMMIT)` dispara el procesamiento solo tras el commit (la versión previa podía dejar documentos en PROCESANDO para siempre).
-- **Atomicidad real**: `DocumentoProcesadorTransaccional` (bean separado, evita self-invocation) con `@Transactional(rollbackFor = Exception.class)` — un fallo a mitad revierte TODOS los fragmentos (los tests de integración lo verifican con fallo en el 2º fragmento).
+- **Disparo tras commit**: `DocumentoService.subirDocumento` publica `DocumentoSubidoEvent`; el listener con `@TransactionalEventListener(AFTER_COMMIT)` dispara el procesamiento solo después del commit de la transacción.
+- **Atomicidad**: `DocumentoProcesadorTransaccional` (bean separado) con `@Transactional(rollbackFor = Exception.class)` — un fallo a mitad revierte todos los fragmentos.
 - **Seguridad**: `AlmacenamientoDiscoLocal` sanitiza nombres de archivo y rutas contra path traversal (`..`); lectura/borrado rechazan rutas que escapen del baseDir.
-- **Endpoints de testing eliminados**: `/marcar-listo` y `/marcar-error` ya no existen (estado gestionado por el procesador; cualquiera podía marcar documentos como LISTO con `permitAll`).
-- **Tests**: la suite pasó de 26 a **68 tests** (62 unitarios + 6 integración) en `mvn verify`. El commit anterior de fase 2 afirmaba "19 new tests all green" con un IT que no compilaba; tras la auditoría, la cifra es real y verificada ejecutando la suite.
-- **ADR 004**: actualizado para reflejar el código real (RestTemplate, evento AFTER_COMMIT, rollbackFor).
+- **Tests**: la suite pasó de 26 a **68 tests** (62 unitarios + 6 integración) en `mvn verify`.
+- **ADR 004**: documenta la estrategia de embeddings y procesamiento asíncrono.
 
 ## 2026-09-04 (Fase 1: subida de manuales)
 - **Endpoints de documentos implementados**: `POST /api/vehiculos/{id}/documentos` (subida), `GET /api/vehiculos/{id}/documentos` (listado), `GET /api/vehiculos/{id}/documentos/{docId}/download` (descarga). Aceptan PDF, TXT y DOCX hasta 10 MB.

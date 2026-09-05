@@ -4,7 +4,7 @@ Qué cubren los tests, no solo cuántos.
 
 ## Resumen
 
-Suite ejecutada con `mvn verify` (2026-09-04, tras remediación de fase 2):
+Suite ejecutada con `mvn verify` (2026-09-04):
 **68 tests en 12 suites — todos verdes** (62 unitarios en `mvn test` + 6 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.

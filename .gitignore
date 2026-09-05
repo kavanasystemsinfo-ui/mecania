@@ -32,3 +32,6 @@ docker-compose.override.yml
 # Test reports
 **/target/surefire-reports/
 **/target/failsafe-reports/
+
+# Interno - no publicar
+AGENTS.md

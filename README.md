@@ -10,7 +10,7 @@
 
 ## 🎯 Qué es Mecania y por qué existe (como pieza de portafolio)
 
-**Mecania** es un **MVP DEMO/PORTFOLIO** creado para demostrar mi capacidad de dirigir agentes de IA sobre Java/Spring Boot y mi habilidad de análisis de negocio en el dominio de mantenimiento vehicular. **NO es un producto para cliente real**, sino un ejemplo de cómo abordar el desarrollo de software cuando se quiere mostrar arquitectura técnica, decisiones de diseño y proceso asistido por IA.
+**Mecania** es un **MVP DEMO/PORTFOLIO** construido en Java/Spring Boot para demostrar arquitectura backend, análisis de negocio y decisiones de diseño en el dominio de mantenimiento vehicular. **NO es un producto para cliente real**, sino un ejemplo de cómo abordar el desarrollo de software mostrando arquitectura técnica y decisiones de diseño documentadas.
 
 Este proyecto muestra:
 - Arquitectura hexagonal limpia con dominio rico (`Vehiculo`, `Documento`, `Fragmento`, `Alerta`).
@@ -164,30 +164,6 @@ Durante la construcción inicial de Mecania, estos fueron aprendizajes concretos
 4. **Separar lo demostrable de lo production-ready**: En un portfolio está bien dejar ciertas cosas (como login) para fases posteriores, siempre que se documenten explícitamente y no se oculten como limitaciones.
 5. **YAGNI en la práctica**: Antes de añadir una dependencia o una capa de abstracción, preguntar si el problema actual realmente la necesita. Muchas veces el JDK o Spring Boot lo resuelven sin complejidad extra.
 
-## 🧠 Cómo se construyó — proceso con IA
-
-Este proyecto siguió una metodología de desarrollo asistida por IA rigurosa:
-
-1. **Orquestación principal:** Elías (orquestador Hermes) definió la arquitectura general, tomó decisiones técnicas y supervisó la calidad.
-2. **Especialización de subagentes:**
-   - `$dev`: Implementación de funcionalidades (API, web, almacenamiento, RAG).
-   - `$doc`: Creación y mantenimiento de documentación técnica (specs, ADRs, métricas).
-   - `$ideas`: Brainstorming de enfoques y validación de supuestos.
-3. **Validación humana continua:** Jorge (el usuario) proporcionó feedback en cada fase clave:
-   - Aprobación del stack inicial.
-   - Validación del motor de almacenamiento y búsqueda.
-   - Revisiones de arquitectura y decisiones de diseño.
-   - Verificación de tests y calidad del código.
-4. **Flujo de trabajo:**
-   - Brainstorming inicial con `$ideas` para definir alcance y enfoque.
-   - Diseño arquitectónico y creación de ADRs preliminares.
-   - Desarrollo incremental TDD con `$dev` (primero CRUD vehículos, luego almacenamiento de manuales, luego búsqueda Tavily, luego RAG, luego alertas).
-   - Documentación paralela con `$doc` (specs, ADRs, métricas).
-   - Integración y pruebas end-to-end.
-   - Despliegue en staging y producción (Render/Fly.io) cuando corresponda.
-
-Este enfoque permitió construir una base técnica sólida en tiempo limitado, aprovechando la IA para tareas rutinarias (boilerplate, búsqueda de documentación, redacción inicial) y enfocando el esfuerzo humano en decisiones arquitectónicas y validación de negocio.
-
 ## 🔓 Transparencia sobre limitaciones
 
 - **Seguridad:** En la fase actual, Mecania corre con seguridad abierta (`permitAll()`) para facilitar pruebas y demos. Esto **NO es apto para producción**. Ver ADR 002 para detalles y plan futuro.
@@ -197,7 +173,7 @@ Este enfoque permitió construir una base técnica sólida en tiempo limitado, a
 
 ## 🙏 Créditos
 
-Proyecto diseñado con criterio arquitectónico propio, implementado con asistencia de IA.
+Proyecto diseñado con criterio arquitectónico propio.
 
 --- 
 
