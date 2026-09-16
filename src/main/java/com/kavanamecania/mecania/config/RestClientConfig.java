@@ -21,4 +21,13 @@ public class RestClientConfig {
                 .setReadTimeout(Duration.ofSeconds(30))
                 .build();
     }
+
+    @Bean
+    public RestTemplate chatRestTemplate(RestTemplateBuilder builder) {
+        // El LLM puede tardar más que un embedding: read timeout más holgado.
+        return builder
+                .setConnectTimeout(Duration.ofSeconds(10))
+                .setReadTimeout(Duration.ofSeconds(90))
+                .build();
+    }
 }

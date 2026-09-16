@@ -1,10 +1,13 @@
 package com.kavanamecania.mecania.controller;
 
 import com.kavanamecania.mecania.domain.busqueda.BusquedaException;
+import com.kavanamecania.mecania.domain.chat.LlmException;
 import com.kavanamecania.mecania.domain.descarga.DescargaException;
 import com.kavanamecania.mecania.domain.descarga.MotivoDescarga;
+import com.kavanamecania.mecania.domain.embedding.EmbeddingException;
 import com.kavanamecania.mecania.domain.exception.VehiculoDuplicadoException;
 import com.kavanamecania.mecania.domain.exception.VehiculoNotFoundException;
+import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -70,6 +73,24 @@ public class GlobalExceptionHandler {
             case DEMASIADO_GRANDE -> HttpStatus.PAYLOAD_TOO_LARGE;
             case ERROR_RED -> HttpStatus.BAD_GATEWAY;
         };
+    }
+
+    /** El modelo de lenguaje no respondió: 503, distinto de "sin base" (respuesta válida). */
+    @ExceptionHandler(LlmException.class)
+    public ResponseEntity<Map<String, Object>> llmNoDisponible(LlmException ex) {
+        return body(HttpStatus.SERVICE_UNAVAILABLE, "llm_no_disponible", ex.getMessage(), null);
+    }
+
+    /** El proveedor de embeddings no respondió al vectorizar la pregunta. */
+    @ExceptionHandler(EmbeddingException.class)
+    public ResponseEntity<Map<String, Object>> embeddingsNoDisponibles(EmbeddingException ex) {
+        return body(HttpStatus.SERVICE_UNAVAILABLE, "embeddings_no_disponible", ex.getMessage(), null);
+    }
+
+    /** El almacén de vectores (pgvector) no está disponible: error interno del servidor. */
+    @ExceptionHandler(VectorPersistenceException.class)
+    public ResponseEntity<Map<String, Object>> vectoresNoDisponibles(VectorPersistenceException ex) {
+        return body(HttpStatus.INTERNAL_SERVER_ERROR, "vector_no_disponible", ex.getMessage(), null);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
