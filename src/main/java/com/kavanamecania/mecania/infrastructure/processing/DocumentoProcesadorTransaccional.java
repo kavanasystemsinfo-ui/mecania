@@ -10,6 +10,8 @@ import com.kavanamecania.mecania.domain.extraction.ExtractionException;
 import com.kavanamecania.mecania.domain.model.Documento;
 import com.kavanamecania.mecania.domain.model.Fragmento;
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
+import com.kavanamecania.mecania.domain.vector.RepositorioVectores;
+import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
 import com.kavanamecania.mecania.infrastructure.extraction.TextExtractorFactory;
 import com.kavanamecania.mecania.infrastructure.repository.FragmentoRepository;
 import org.slf4j.Logger;
@@ -43,6 +45,7 @@ public class DocumentoProcesadorTransaccional {
     private final AlmacenamientoArchivos almacenamiento;
     private final TextExtractorFactory extractorFactory;
     private final EmbeddingService embeddingService;
+    private final RepositorioVectores repositorioVectores;
     private final Chunker chunker;
     private final DocumentoProcessorStatusUpdater statusUpdater;
 
@@ -51,6 +54,7 @@ public class DocumentoProcesadorTransaccional {
             AlmacenamientoArchivos almacenamiento,
             TextExtractorFactory extractorFactory,
             EmbeddingService embeddingService,
+            RepositorioVectores repositorioVectores,
             @Value("${mecania.chunking.chunk-size:512}") int chunkSize,
             @Value("${mecania.chunking.overlap:64}") int overlap,
             DocumentoProcessorStatusUpdater statusUpdater) {
@@ -58,6 +62,7 @@ public class DocumentoProcesadorTransaccional {
         this.almacenamiento = almacenamiento;
         this.extractorFactory = extractorFactory;
         this.embeddingService = embeddingService;
+        this.repositorioVectores = repositorioVectores;
         this.chunker = new SlidingWindowChunker(chunkSize, overlap);
         this.statusUpdater = statusUpdater;
     }
@@ -75,7 +80,7 @@ public class DocumentoProcesadorTransaccional {
      * DocumentoProcessorIT.procesar_con_fallo_a_mitad_en_segundo_fragmento).</p>
      */
     @Transactional(rollbackFor = Exception.class)
-    public void doProcesar(Long documentoId) throws ExtractionException, EmbeddingException {
+    public void doProcesar(Long documentoId) throws ExtractionException, EmbeddingException, VectorPersistenceException {
         Documento documento = statusUpdater.findDocumento(documentoId);
 
         // 1. Leer bytes del archivo
@@ -100,7 +105,7 @@ public class DocumentoProcesadorTransaccional {
             throw new ExtractionException("El documento no produjo fragmentos");
         }
 
-        // 4. Calcular embeddings y persistir fragmentos
+        // 4. Calcular embeddings y persistir fragmentos (texto + vector)
         int posicion = 0;
         for (String chunk : chunks) {
             Embedding emb = embeddingService.embed(chunk);
@@ -109,14 +114,10 @@ public class DocumentoProcesadorTransaccional {
                     .posicion(posicion++)
                     .texto(chunk)
                     .build();
-            // El embedding se calcula pero NO se persiste en BD (decisión ADR 004).
-            // Se descarta aquí; cuando llegue la fase 4 se añadirá una columna vector(N)
-            // mediante migración SQL + JDBC nativo.
-            if (emb != null) {
-                // Reference to silence "unused variable" warning; in phase 4 this is persisted.
-                log.trace("Embedding calculado para fragmento {} (dim {})", posicion, emb.dimension());
-            }
-            fragmentoRepository.save(fragmento);
+            Fragmento guardado = fragmentoRepository.save(fragmento);
+            // El vector vive fuera del modelo JPA (Hibernate-core no mapea pgvector):
+            // tabla auxiliar fragmento_embeddings vía JDBC nativo (ADR 004).
+            repositorioVectores.guardar(guardado.getId(), emb);
         }
 
         log.info("Documento {} procesado: {} fragmentos", documentoId, chunks.size());

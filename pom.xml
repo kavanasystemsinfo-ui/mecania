@@ -54,12 +54,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-		<!-- PostgreSQL Driver -->
+		<!-- PostgreSQL Driver (compilación: PGobject para pgvector) -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<version>${postgresql.version}</version>
-			<scope>runtime</scope>
 		</dependency>
 		<!-- Lombok -->
 		<dependency>

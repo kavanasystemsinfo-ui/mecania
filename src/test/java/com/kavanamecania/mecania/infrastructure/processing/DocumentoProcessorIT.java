@@ -8,11 +8,14 @@ import com.kavanamecania.mecania.domain.model.Documento;
 import com.kavanamecania.mecania.domain.model.Fragmento;
 import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
+import com.kavanamecania.mecania.domain.vector.RepositorioVectores;
+import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
 import com.kavanamecania.mecania.infrastructure.repository.DocumentoRepository;
 import com.kavanamecania.mecania.infrastructure.repository.FragmentoRepository;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -25,7 +28,12 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -43,6 +51,7 @@ class DocumentoProcessorIT {
 
     @MockitoBean private AlmacenamientoArchivos almacenamientoArchivos;
     @MockitoBean private EmbeddingService embeddingService;
+    @MockitoBean private RepositorioVectores repositorioVectores;
 
     @BeforeEach
     void setUp() throws EmbeddingException {
@@ -157,6 +166,74 @@ class DocumentoProcessorIT {
                 .hasMessageContaining("segundo embedding");
 
         // Then: el fallo a mitad revierte la transacción → CERO fragmentos.
+        assertThat(fragmentoRepository.findAll()).isEmpty();
+    }
+
+    @Test
+    void doProcesar_persiste_el_embedding_de_cada_fragmento() throws Exception {
+        // Given
+        final Vehiculo vehiculo = vehiculoRepository.save(Vehiculo.builder()
+                .usuarioId(10L).marca("Seat").modelo("Leon").anio(2021)
+                .kilometraje(5000L).combustible(Combustible.GASOLINA).build());
+
+        final Documento documento = documentoRepository.save(Documento.builder()
+                .vehiculo(vehiculo)
+                .nombre("manual.txt")
+                .tipo(Documento.TipoDocumento.TXT)
+                .rutaAlmacenamiento("vehiculos/10/manual.txt")
+                .estado(Documento.EstadoProcesamiento.PROCESANDO)
+                .tamanoBytes(2000L)
+                .build());
+
+        String texto = "Frase con contenido técnico para generar varios fragmentos. ".repeat(25);
+        when(almacenamientoArchivos.leerArchivo("vehiculos/10/manual.txt"))
+                .thenReturn(texto.getBytes(StandardCharsets.UTF_8));
+
+        // When
+        processor.doProcesar(documento.getId());
+
+        // Then: se guarda un vector por cada fragmento, con su id y el embedding calculado
+        List<Fragmento> fragmentos = fragmentoRepository.findAll();
+        assertThat(fragmentos).hasSizeGreaterThanOrEqualTo(2);
+
+        ArgumentCaptor<Long> idCaptor = ArgumentCaptor.forClass(Long.class);
+        ArgumentCaptor<Embedding> embCaptor = ArgumentCaptor.forClass(Embedding.class);
+        verify(repositorioVectores, times(fragmentos.size()))
+                .guardar(idCaptor.capture(), embCaptor.capture());
+
+        assertThat(idCaptor.getAllValues())
+                .containsExactlyInAnyOrderElementsOf(
+                        fragmentos.stream().map(Fragmento::getId).toList());
+        assertThat(embCaptor.getAllValues()).allMatch(e -> e.dimension() == 4);
+    }
+
+    @Test
+    void fallo_al_persistir_el_vector_revierte_la_transaccion() throws Exception {
+        // Given: el almacén de vectores falla en el primer guardado
+        doThrow(new VectorPersistenceException("pgvector no disponible"))
+                .when(repositorioVectores).guardar(anyLong(), any());
+
+        final Vehiculo vehiculo = vehiculoRepository.save(Vehiculo.builder()
+                .usuarioId(11L).marca("VW").modelo("Golf").anio(2020)
+                .kilometraje(8000L).combustible(Combustible.GASOLINA).build());
+
+        final Documento documento = documentoRepository.save(Documento.builder()
+                .vehiculo(vehiculo)
+                .nombre("manual.txt")
+                .tipo(Documento.TipoDocumento.TXT)
+                .rutaAlmacenamiento("vehiculos/11/manual.txt")
+                .estado(Documento.EstadoProcesamiento.PROCESANDO)
+                .tamanoBytes(500L)
+                .build());
+
+        when(almacenamientoArchivos.leerArchivo("vehiculos/11/manual.txt"))
+                .thenReturn("Texto de prueba".getBytes(StandardCharsets.UTF_8));
+
+        // When/Then: el fallo del vector propaga y revierte → CERO fragmentos
+        assertThatThrownBy(() -> processor.doProcesar(documento.getId()))
+                .isInstanceOf(VectorPersistenceException.class)
+                .hasMessageContaining("pgvector no disponible");
+
         assertThat(fragmentoRepository.findAll()).isEmpty();
     }
 
