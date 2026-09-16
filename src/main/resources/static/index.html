@@ -10,15 +10,88 @@
         .sticky-top { z-index: 1020; }
         .document-row { cursor: pointer; }
         .document-row:hover { background-color: #f8f9fa; }
+        .auth-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            background: linear-gradient(135deg, #fdf2f8 0%, #e0f2fe 50%, #fef3c7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .auth-card {
+            width: 100%;
+            max-width: 400px;
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+            padding: 2rem;
+            animation: authFloatIn .35s ease-out;
+        }
+        @keyframes authFloatIn {
+            from { opacity: 0; transform: translateY(12px) scale(.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
     </style>
 </head>
 <body>
+<div id="authOverlay" class="auth-overlay d-none">
+    <div class="auth-card">
+        <div class="text-center mb-4">
+            <h2 class="fw-bold mb-1">Mecania</h2>
+            <p class="text-muted mb-0">Tu asistente de mantenimiento del coche</p>
+        </div>
+        <div id="authAlert"></div>
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-pane" type="button" role="tab">Entrar</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="reg-tab" data-bs-toggle="tab" data-bs-target="#reg-pane" type="button" role="tab">Crear cuenta</button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="login-pane" role="tabpanel">
+                <form id="loginForm">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="loginEmail" required autocomplete="email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="loginBtn">Entrar</button>
+                </form>
+            </div>
+            <div class="tab-pane fade" id="reg-pane" role="tabpanel">
+                <form id="regForm">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="regEmail" required autocomplete="email">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="regPassword" required minlength="6" autocomplete="new-password">
+                        <div class="form-text">Mínimo 6 caracteres.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100" id="regBtn">Crear cuenta</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="appContent" class="d-none">
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="#">Mecania</a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item"><a class="nav-link" href="#" id="refreshBtn">Actualizar lista</a></li>
+                <li class="nav-item"><span class="navbar-text me-2" id="userEmail"></span></li>
+                <li class="nav-item"><a class="nav-link" href="#" id="logoutBtn">Salir</a></li>
             </ul>
         </div>
     </div>
@@ -33,7 +106,6 @@
         <thead class="table-dark">
             <tr>
                 <th>#</th>
-                <th>Usuario ID</th>
                 <th>Marca</th>
                 <th>Modelo</th>
                 <th>Año</th>
@@ -79,10 +151,6 @@
                     <div class="tab-pane fade show active" id="vehicle-tab-pane" role="tabpanel" aria-labelledby="vehicle-tab">
                         <form id="vehicleForm">
                             <input type="hidden" id="vehicleId">
-                            <div class="mb-3">
-                                <label class="form-label">Usuario ID</label>
-                                <input type="number" class="form-control" id="usuarioId" required>
-                            </div>
                             <div class="mb-3">
                                 <label class="form-label">Marca</label>
                                 <input type="text" class="form-control" id="marca" required>
@@ -255,12 +323,111 @@
     </div>
 </div>
 
+</div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let apiBase = '/api/vehiculos';
 let editMode = false;
 let editingId = null;
 let currentVehicleId = null; // Currently selected vehicle for document tab
+
+// ---- Autenticación ----
+let token = localStorage.getItem('mecania.token') || null;
+let currentEmail = localStorage.getItem('mecania.email') || null;
+
+const nativeFetch = window.fetch.bind(window);
+
+async function apiFetch(url, options = {}) {
+    const headers = { ...(options.headers || {}) };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const resp = await nativeFetch(url, { ...options, headers });
+    if (resp.status === 401) {
+        cerrarSesion();
+        throw new Error('Sesión caducada. Inicia sesión de nuevo.');
+    }
+    return resp;
+}
+
+function mostrarLogin() {
+    document.getElementById('authOverlay').classList.remove('d-none');
+    document.getElementById('appContent').classList.add('d-none');
+}
+
+function mostrarApp() {
+    document.getElementById('authOverlay').classList.add('d-none');
+    document.getElementById('appContent').classList.remove('d-none');
+}
+
+function cerrarSesion() {
+    token = null;
+    currentEmail = null;
+    localStorage.removeItem('mecania.token');
+    localStorage.removeItem('mecania.email');
+    currentVehicleId = null;
+    mostrarLogin();
+}
+
+function abrirSesion(data) {
+    token = data.token;
+    currentEmail = data.email;
+    localStorage.setItem('mecania.token', data.token);
+    localStorage.setItem('mecania.email', data.email);
+    document.getElementById('userEmail').textContent = data.email;
+    mostrarApp();
+    loadVehicles();
+}
+
+async function iniciarSesion(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+    try {
+        const resp = await nativeFetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.message || `HTTP ${resp.status}`);
+        }
+        abrirSesion(await resp.json());
+    } catch (err) {
+        showAlert(err.message, 'danger', 'authAlert');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+    }
+}
+
+async function registrar(e) {
+    e.preventDefault();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true;
+    btn.textContent = 'Creando...';
+    try {
+        const resp = await nativeFetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.message || `HTTP ${resp.status}`);
+        }
+        abrirSesion(await resp.json());
+    } catch (err) {
+        showAlert(err.message, 'danger', 'authAlert');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear cuenta';
+    }
+}
 
 function showAlert(message, type = 'info', containerId = 'alertContainer') {
     const container = document.getElementById(containerId);
@@ -285,7 +452,7 @@ function showDocumentAlert(message, type = 'info') {
 
 async function loadVehicles() {
     try {
-        const resp = await fetch(apiBase);
+        const resp = await apiFetch(apiBase);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const vehicles = await resp.json();
         const tbody = document.getElementById('vehicleTableBody');
@@ -294,7 +461,6 @@ async function loadVehicles() {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${idx + 1}</td>
-                <td>${v.usuarioId}</td>
                 <td>${v.marca}</td>
                 <td>${v.modelo}</td>
                 <td>${v.anio}</td>
@@ -331,7 +497,7 @@ function loadDocumentsForVehicle(vehicleId) {
     // Update tab title
     document.getElementById('document-tab').textContent = `Documentos (vehículo ${vehicleId})`;
     // Load documents
-    fetch(`${apiBase}/${vehicleId}/documentos`)
+    apiFetch(`${apiBase}/${vehicleId}/documentos`)
         .then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.json();
@@ -390,7 +556,7 @@ async function downloadDocument(documentoId) {
         return;
     }
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/documentos/${documentoId}/download`);
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/documentos/${documentoId}/download`);
         if (!resp.ok) {
             const errorData = await resp.json();
             throw new Error(errorData.message || `HTTP ${resp.status}`);
@@ -441,7 +607,7 @@ async function uploadDocument() {
     formData.append('file', file);
 
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/documentos`, {
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/documentos`, {
             method: 'POST',
             body: formData
         });
@@ -482,7 +648,7 @@ async function buscarManuales() {
     try {
         const url = `${apiBase}/${currentVehicleId}/manuales/candidatos`
             + (consulta ? `?q=${encodeURIComponent(consulta)}` : '');
-        const resp = await fetch(url);
+        const resp = await apiFetch(url);
         if (!resp.ok) {
             const errorData = await resp.json().catch(() => ({}));
             throw new Error(errorData.message || `HTTP ${resp.status}`);
@@ -559,7 +725,7 @@ async function importarManual(url, boton) {
     }
 
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/manuales/importar`, {
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/manuales/importar`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({url: url})
@@ -597,7 +763,7 @@ async function loadAlertasForVehicle() {
         return;
     }
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas`);
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/alertas`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const alertas = await resp.json();
         const tbody = document.getElementById('alertasTableBody');
@@ -638,7 +804,7 @@ async function createAlerta(event) {
     }
 
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas`, {
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/alertas`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({tipo, descripcion, fecha, repetitividad})
@@ -663,7 +829,7 @@ async function deleteAlerta(alertaId) {
     }
     if (!confirm('¿Está seguro de eliminar esta alerta?')) return;
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas/${alertaId}`, {
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/alertas/${alertaId}`, {
             method: 'DELETE'
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -683,7 +849,7 @@ async function revisarAlertasVencidas() {
     const contenedor = document.getElementById('vencidasContainer');
     contenedor.innerHTML = 'Consultando alertas vencidas...';
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas/vencidas`);
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/alertas/vencidas`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const vencidas = await resp.json();
         if (!vencidas.length) {
@@ -707,7 +873,6 @@ async function revisarAlertasVencidas() {
 document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const vehicle = {
-        usuarioId: parseInt(document.getElementById('usuarioId').value),
         marca: document.getElementById('marca').value.trim(),
         modelo: document.getElementById('modelo').value.trim(),
         anio: parseInt(document.getElementById('anio').value),
@@ -716,20 +881,20 @@ document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
         matricula: document.getElementById('matricula').value.trim()
     };
     // Basic validation
-    if (!vehicle.usuarioId || !vehicle.marca || !vehicle.modelo || !vehicle.anio || !vehicle.combustible || vehicle.kilometraje === null || !vehicle.matricula) {
+    if (!vehicle.marca || !vehicle.modelo || !vehicle.anio || !vehicle.combustible || vehicle.kilometraje === null || !vehicle.matricula) {
         showAlert('Por favor complete todos los campos', 'warning');
         return;
     }
     try {
         let resp;
         if (editMode && editingId) {
-            resp = await fetch(`${apiBase}/${editingId}`, {
+            resp = await apiFetch(`${apiBase}/${editingId}`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(vehicle)
             });
         } else {
-            resp = await fetch(apiBase, {
+            resp = await apiFetch(apiBase, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(vehicle)
@@ -756,14 +921,13 @@ document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
 function editVehicle(id) {
     editMode = true;
     editingId = id;
-    fetch(`${apiBase}/${id}`)
+    apiFetch(`${apiBase}/${id}`)
         .then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.json();
         })
         .then(v => {
             document.getElementById('vehicleId').value = v.id;
-            document.getElementById('usuarioId').value = v.usuarioId;
             document.getElementById('marca').value = v.marca;
             document.getElementById('modelo').value = v.modelo;
             document.getElementById('anio').value = v.anio;
@@ -793,7 +957,7 @@ function editVehicle(id) {
 
 function deleteVehicle(id) {
     if (!confirm('¿Está seguro de eliminar este vehículo?')) return;
-    fetch(`${apiBase}/${id}`, {method: 'DELETE'})
+    apiFetch(`${apiBase}/${id}`, {method: 'DELETE'})
         .then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             showAlert('Vehículo eliminado exitosamente', 'success');
@@ -860,7 +1024,7 @@ async function enviarPregunta(e) {
     const cont = document.getElementById('chatRespuesta');
     cont.innerHTML = '<div class="text-muted small">Consultando los manuales…</div>';
     try {
-        const resp = await fetch(`${apiBase}/${currentVehicleId}/chat`, {
+        const resp = await apiFetch(`${apiBase}/${currentVehicleId}/chat`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ pregunta })
@@ -886,8 +1050,18 @@ async function enviarPregunta(e) {
 }
 document.getElementById('chatForm').addEventListener('submit', enviarPregunta);
 
-// Initial load
-loadVehicles();
+// Inicialización
+document.getElementById('loginForm').addEventListener('submit', iniciarSesion);
+document.getElementById('regForm').addEventListener('submit', registrar);
+document.getElementById('logoutBtn').addEventListener('click', cerrarSesion);
+
+if (token) {
+    document.getElementById('userEmail').textContent = currentEmail;
+    mostrarApp();
+    loadVehicles();
+} else {
+    mostrarLogin();
+}
 </script>
 </body>
 </html>
