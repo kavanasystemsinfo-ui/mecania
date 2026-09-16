@@ -47,7 +47,7 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~Todos los endpoints protegidos excepto `/api/auth/*`.~~ ✅ `/api/auth/**` abierto, resto de `/api/**` exige token (`mecania.auth.enabled`)
 - ~~Tests de flujos de autenticación y autorización.~~ ✅ `JwtServiceTest`, `AuthServiceTest`, `AuthControllerIT`, `MultiTenenciaIT`
 - ~~ADR que documente la elección (JWT vs session, secret management, expiración).~~ ✅ ADR 008
-- UI de login en el front (index.html): ⏳ pendiente, es el siguiente paso de la fase.
+- ~~UI de login en el front (index.html).~~ ✅ overlay Entrar/Crear cuenta, sesión en localStorage, token en todas las llamadas y botón Salir.
 
 ### Fase 7: Despliegue y monitoreo
 - Pipeline GitHub Actions que ejecuta `mvn verify` y despliega a un entorno de staging (Render, Fly.io o similares).
