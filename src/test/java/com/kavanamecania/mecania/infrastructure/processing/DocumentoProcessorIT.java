@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.nio.charset.StandardCharsets;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.when;
  * (embedding, almacenamiento). Persiste en BD H2 en memoria para verificar la transacción.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 class DocumentoProcessorIT {
 
     @Autowired private DocumentoProcessor processor;

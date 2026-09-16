@@ -1,0 +1,20 @@
+# Render Blueprint para Mecania.
+# Servicio web (Docker) + base de datos externa Neon (PostgreSQL + pgvector).
+# Los secrets (DATABASE_URL, JWT_SECRET, OPENROUTER_API_KEY) se rellenan a mano
+# en el dashboard de Render o con `render blueprint` (nunca en este archivo).
+services:
+  - type: web
+    name: mecania
+    runtime: docker
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false

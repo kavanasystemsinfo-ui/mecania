@@ -183,6 +183,12 @@
 					</execution>
 				</executions>
 			</plugin>
+			<!-- Empaqueta un jar ejecutable (fat jar) para el despliegue en Docker.
+			     El goal repackage ya lo vincula spring-boot-starter-parent. -->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
 		</plugins>
 	</build>
 </project>
