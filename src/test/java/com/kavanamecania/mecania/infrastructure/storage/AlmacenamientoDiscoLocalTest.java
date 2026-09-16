@@ -241,4 +241,49 @@ class AlmacenamientoDiscoLocalTest {
 
     // Note: Testing IOException on write failure is complex without mocking low-level IO.
     // We rely on the fact that Java throws IOException on failure; covered by other tests indirectly.
+
+    // --- guardarArchivo(byte[]): necesaria para los manuales descargados de internet ---
+
+    @Test
+    void guardarBytes_escribe_el_contenido_y_devuelve_ruta_relativa() throws IOException {
+        byte[] contenido = "%PDF-1.4 manual descargado".getBytes();
+
+        String relativePath = storage.guardarArchivo(contenido, "manual-corolla-2018.pdf", "vehiculos/9/documentos");
+
+        assertThat(relativePath).isEqualTo("vehiculos/9/documentos/manual-corolla-2018.pdf");
+        Path fullPath = tempDir.resolve(relativePath);
+        assertThat(fullPath).exists();
+        assertThat(fullPath).hasBinaryContent(contenido);
+    }
+
+    @Test
+    void guardarBytes_con_nombre_travieso_no_escapa_del_baseDir() throws IOException {
+        byte[] contenido = "pwned".getBytes();
+
+        String relativePath = storage.guardarArchivo(contenido, "../../../etc/cron.d/manual.pdf", "vehiculos/9/documentos");
+
+        assertThat(relativePath).isEqualTo("vehiculos/9/documentos/manual.pdf");
+        assertThat(tempDir.resolve(relativePath)).exists();
+        assertThat(Files.exists(Path.of(tempDir.getParent().toString(), "etc", "cron.d", "manual.pdf"))).isFalse();
+    }
+
+    @Test
+    void guardarBytes_con_nombre_especial_cae_a_unnamed() throws IOException {
+        // Los manuales descargados pueden venir con nombres raros desde el servidor.
+        assertThat(storage.guardarArchivo("x".getBytes(), "..", "docs")).isEqualTo("docs/unnamed");
+        assertThat(storage.guardarArchivo("x".getBytes(), "", "docs")).isEqualTo("docs/unnamed");
+    }
+
+    @Test
+    void guardarBytes_rechaza_contenido_vacio() {
+        assertThatThrownBy(() -> storage.guardarArchivo(new byte[0], "manual.pdf", "docs"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("empty");
+    }
+
+    @Test
+    void guardarBytes_rechaza_subdirectorio_que_escapa_del_baseDir() {
+        assertThatThrownBy(() -> storage.guardarArchivo("x".getBytes(), "manual.pdf", "../fuera"))
+                .isInstanceOf(IOException.class);
+    }
 }

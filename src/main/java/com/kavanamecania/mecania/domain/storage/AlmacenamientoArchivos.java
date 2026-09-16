@@ -20,6 +20,18 @@ public interface AlmacenamientoArchivos {
     String guardarArchivo(MultipartFile file, String subdirectorio) throws IOException;
 
     /**
+     * Guarda un contenido ya en memoria (por ejemplo un manual descargado de
+     * internet) y devuelve la ruta relativa al directorio base.
+     *
+     * @param contenido   bytes a escribir (no puede estar vacío)
+     * @param nombreArchivo nombre propuesto; se sanitiza igual que en la subida
+     * @param subdirectorio subcarpeta dentro del storage
+     * @return ruta relativa que se guardará en BD
+     * @throws IOException si falla la escritura o la ruta no es válida
+     */
+    String guardarArchivo(byte[] contenido, String nombreArchivo, String subdirectorio) throws IOException;
+
+    /**
      * Lee el archivo completo y devuelve su contenido como array de bytes.
      *
      * @param rutaRelativa ruta tal como se obtuvo de {@link #guardarArchivo}

@@ -5,7 +5,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![pgvector](https://img.shields.io/badge/pgvector-enabled-orange)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-lightgrey)
-![Tests](https://img.shields.io/badge/tests-68-brightgreen)
+![Tests](https://img.shields.io/badge/tests-158-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 🎯 Qué es Mecania y por qué existe (como pieza de portafolio)
@@ -35,7 +35,7 @@ Mecania está construido como una aplicación Spring Boot monolítica con separa
 graph LR
     A[Frontend Bootstrap] -->|HTTP| B[API Spring Boot]
     B -->|Driver| C[(PostgreSQL + pgvector)]
-    B -->|HTTP| D[Tavily API (búsqueda de manuales)]
+    B -->|HTTP| D[DuckDuckGo HTML (búsqueda asistida de manuales)]
     B -->|HTTP| E[LLM via OpenRouter (RAG)]
 ```
 
@@ -51,7 +51,7 @@ graph LR
 
 - **Backend:** Java 21 + Spring Boot 3.4
 - **Persistencia:** PostgreSQL 16 con extensión pgvector (para almacenar embeddings de fragmentos de texto)
-- **Búsqueda externa:** Integración con Tavily API (para buscar manuales en internet)
+- **Búsqueda externa:** DuckDuckGo (endpoint HTML público) parseado con Jsoup, para proponer manuales sin depender de una API de pago
 - **LLM:** Integración con modelos de lenguaje vía OpenRouter (para generar respuestas basadas en fragmentos recuperados)
 - **Documentación API:** Springdoc OpenAPI (Swagger UI disponible en `/swagger-ui.html`)
 - **Build:** Maven 3.9+
@@ -64,6 +64,8 @@ graph LR
 - [ADR 001: Stack Tecnológico](docs/adr/001-stack-tecnologico.md) — decisión inicial de stack.
 - [ADR 002: Seguridad abierta en fase MVP](docs/adr/002-seguridad-abierta-mvp.md) — decisión consciente de `permitAll()` para acelerar validación.
 - [ADR 003: Estrategia de almacenamiento de manuales](docs/adr/003-almacenamiento-manuales-disco-local.md) — disco local ahora, Supabase Storage o S3 cuando se despliegue a producción real.
+- [ADR 004: Embeddings y procesamiento asíncrono](docs/adr/004-embeddings-y-procesamiento-async.md) — extracción, chunking 512/64 y `@Async` disparado tras el commit.
+- [ADR 005: Búsqueda asistida de manuales y descarga selectiva](docs/adr/005-busqueda-asistida-manuales.md) — DuckDuckGo HTML en vez de API de pago, validación SSRF al descargar y errores explícitos por motivo.
 - [docs/HISTORY.md](docs/HISTORY.md) — evolución y decisiones descartadas.
 - [docs/METRICS.md](docs/METRICS.md) — qué cubren los tests (no solo cuántos).
 - [docs/ROADMAP.md](docs/ROADMAP.md) — plan honesto de fases futuras.
@@ -152,6 +154,24 @@ La aplicación estará disponible en `http://localhost:8080`.
 
 La implementación actual guarda los archivos en disco local (ver [ADR 003](docs/adr/003-almacenamiento-manuales-disco-local.md)). La interfaz `AlmacenamientoArchivos` está pensada para sustituirse por Supabase Storage o S3 sin tocar el resto del código.
 
+#### Búsqueda asistida de manuales (Fase 3)
+
+Es una función de **búsqueda asistida**: el sistema propone candidatos y solo descarga lo que el usuario acepta.
+
+- **Proponer candidatos** (no descarga nada; `q` es una consulta libre opcional)
+  ```bash
+  curl "http://localhost:8080/api/vehiculos/1/manuales/candidatos?q=cambio%20de%20aceite"
+  ```
+
+- **Importar una URL aceptada** (PDF, TXT o DOCX, máximo 10 MB)
+  ```bash
+  curl -X POST http://localhost:8080/api/vehiculos/1/manuales/importar \
+    -H "Content-Type: application/json" \
+    -d '{"url":"https://www.ejemplo.es/manuales/toyota-corolla-2018.pdf"}'
+  ```
+
+Respuestas de error, con código propio por motivo: `400` URL inválida u host no permitido (protección SSRF: loopback, rangos privados y metadatos de la nube están bloqueados), `413` archivo demasiado grande, `415` tipo no soportado, `502` fallo de red y `503` cuando el buscador externo bloquea la petición (en ese caso la UI invita a pegar la URL a mano). Reimportar la misma URL para el mismo vehículo devuelve `200` con `yaExistia: true` y no vuelve a descargar ni reprocesar el archivo. Ver [ADR 005](docs/adr/005-busqueda-asistida-manuales.md).
+
 > En la fase MVP todos los endpoints están abiertos (`permitAll()`). Ver [ADR 002](docs/adr/002-seguridad-abierta-mvp.md) para detalles.
 
 ## 📖 Aprendizajes clave
@@ -168,7 +188,7 @@ Durante la construcción inicial de Mecania, estos fueron aprendizajes concretos
 
 - **Seguridad:** En la fase actual, Mecania corre con seguridad abierta (`permitAll()`) para facilitar pruebas y demos. Esto **NO es apto para producción**. Ver ADR 002 para detalles y plan futuro.
 - **Frontend:** La interfaz Bootstrap es funcional pero mínima; se centra en demostrar la API, no en habilidades de diseño UI/UX.
-- **Búsqueda Tavily y LLM:** Las integraciones con Tavily y OpenRouter están planeadas pero aún no implementadas. Los placeholders y pruebas usarán mocks o llamadas controladas según corresponda.
+- **Búsqueda de manuales y LLM:** la búsqueda de manuales usa el HTML público de DuckDuckGo (ADR 005): puede fallar si el buscador bloquea la petición, y por eso existe el camino alternativo de pegar la URL a mano. La integración con el LLM para el chat RAG (Fase 4) está planteada pero aún no implementada.
 - **Autenticación de usuario:** aún no hay endpoints de registro/login; se añadirán cuando sea necesario demostrar manejo de identidad y multi-tenencia.
 
 ## 🙏 Créditos
@@ -177,4 +197,4 @@ Proyecto diseñado con criterio arquitectónico propio.
 
 --- 
 
-*Última actualización: 2026-09-05*
+*Última actualización: 2026-09-16*

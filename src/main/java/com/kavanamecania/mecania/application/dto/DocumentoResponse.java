@@ -11,6 +11,7 @@ public record DocumentoResponse(
         String estado,
         Long tamanoBytes,
         String mensajeError,
+        String origenUrl,
         Instant createdAt
 ) {
     public static DocumentoResponse from(com.kavanamecania.mecania.domain.model.Documento d) {
@@ -23,6 +24,7 @@ public record DocumentoResponse(
                 d.getEstado() != null ? d.getEstado().name() : null,
                 d.getTamanoBytes(),
                 d.getMensajeError(),
+                d.getOrigenUrl(),
                 d.getCreatedAt()
         );
     }

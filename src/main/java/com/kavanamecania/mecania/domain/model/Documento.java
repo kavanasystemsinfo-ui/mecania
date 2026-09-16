@@ -47,6 +47,13 @@ public class Documento {
     @Column
     private String mensajeError;
 
+    /**
+     * URL de origen cuando el manual se importó desde internet (búsqueda
+     * asistida). Null en las subidas manuales.
+     */
+    @Column(name = "origen_url")
+    private String origenUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 

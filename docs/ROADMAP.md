@@ -13,18 +13,19 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~ADR correspondiente (elección de almacenamiento: disco local vs S3 vs base64 en BD).~~ ✅ ADR 003
 
 ### Fase 2: Procesamiento y embeddings (vector store)
-- Extracción de texto de PDF/TXT (PDFBox o Tika).
-- Chunking inteligente (párrafos o secciones).
-- Generación de embeddings mediante modelo local o API (ej. OpenRouter + modelo de embeddings).
-- Almacenamiento en columna `vector` de PostgreSQL vía pgvector.
-- Endpoint interno para generar vectorstore por vehículo.
-- Tests: verificación de que embeddings se generan y se guardan.
+- ~~Extracción de texto de PDF/TXT (PDFBox o Tika).~~ ✅ PDFBox 3 (PDF), POI (DOCX) y lectura directa (TXT) tras la interfaz `TextExtractor`
+- ~~Chunking inteligente (párrafos o secciones).~~ ✅ ventana deslizante 512/64 (`SlidingWindowChunker`)
+- ~~Generación de embeddings mediante modelo local o API (ej. OpenRouter + modelo de embeddings).~~ ✅ `OpenRouterEmbeddingService` (`text-embedding-3-small`), disparado en background
+- Almacenamiento en columna `vector` de PostgreSQL vía pgvector. ⏳ **pendiente**: los fragmentos se persisten con su texto, pero el vector se guardará en la Fase 4 (Hibernate no mapea el tipo `vector`; ver ADR 004)
+- Endpoint interno para generar vectorstore por vehículo. ⏳ **no se hará**: el procesamiento ya se dispara solo al subir el manual; un endpoint manual no aporta nada
+- ~~Tests: verificación de que embeddings se generan y se guardan.~~ ✅ unitarios (embedding, chunking, extractores) + integración con fallo a mitad de documento
 
-### Fase 3: Asistente Tavily y descarga selectiva
-- Endpoint `POST /api/tavily/buscar` que recibe marca/modelo/anio y devuelve lista de candidatos (título, URL, fuente, snippet).
-- Frontend sencillo para que el usuario revise y acepte/rechace cada candidato.
-- Descarga automática solo de los aceptados y almacenado como documentos del vehículo.
-- Tests de la lógica de filtro y descarga (mock de Tavily opcional para evitar llamadas externas en CI).
+### Fase 3: Búsqueda asistida y descarga selectiva ✅
+- ~~Endpoint `POST /api/tavily/buscar`...~~ ❌ **descartado** (2026-09-06): Tavily consume saldo del titular y Mecania es portfolio. Ver ADR 005.
+- ~~Frontend sencillo para que el usuario revise y acepte/rechace cada candidato.~~ ✅ pestaña Documentos: consulta opcional, listado de candidatos con fuente real y botón "Importar"
+- ~~Descarga automática solo de los aceptados.~~ ✅ `GET /api/vehiculos/{id}/manuales/candidatos` (propone, no descarga) + `POST /api/vehiculos/{id}/manuales/importar` (descarga y registra)
+- ~~Tests de la lógica de filtro y descarga (mock del buscador para evitar llamadas externas en CI).~~ ✅ parseo con HTML fijo, buscador contra servidor local, descargador contra servidor local y validación SSRF
+- Búsqueda sobre el HTML público de DuckDuckGo con Jsoup (coste 0, sin credenciales). Si bloquea, se responde 503 explicando que se puede pegar la URL a mano.
 
 ### Fase 4: Chat RAG especialista por vehículo
 - Endpoint `POST /api/chat` que recibe mensaje y `vehiculoId`.
@@ -54,6 +55,7 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - Documentación de pasos para desplegar en producción.
 
 ## Lo que NO haremos (por ahora o nunca)
+- **APIs de búsqueda de pago** (Tavily, AIsa, Brave Search): la búsqueda de manuales usa el HTML público de DuckDuckGo con Jsoup (Fase 3, ADR 005) para no consumir saldo del titular del proyecto.
 - **Motor de inferencia local de LLMs**: manteneremos la integración vía API (OpenRouter) para evitar complejidad de GPU y licencias en el MVP.
 - **Base de datos vectorial externa** (Pinecone, Weaviate): usaremos PostgreSQL + pgvector para reducir movilidad de datos y dependencias externas.
 - **Frontend avanzado** (SSR, PWA, WebSockets): el frontend actual es suficiente para demostrar la API; se puede mejorar en iteraciones posteriores si el portfolio lo requiere.

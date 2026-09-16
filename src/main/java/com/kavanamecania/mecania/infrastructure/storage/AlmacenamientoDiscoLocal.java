@@ -42,6 +42,37 @@ public class AlmacenamientoDiscoLocal implements AlmacenamientoArchivos {
             throw new IllegalArgumentException("File is empty");
         }
 
+        Path targetFile = prepararDestino(file.getOriginalFilename(), subdirectorio);
+
+        try (InputStream inputStream = file.getInputStream()) {
+            Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        // Return relative path from baseDir
+        return baseDir.relativize(targetFile).toString();
+    }
+
+    @Override
+    public String guardarArchivo(byte[] contenido, String nombreArchivo, String subdirectorio) throws IOException {
+        if (contenido == null || contenido.length == 0) {
+            throw new IllegalArgumentException("File is empty");
+        }
+
+        Path targetFile = prepararDestino(nombreArchivo, subdirectorio);
+        Files.write(targetFile, contenido);
+
+        return baseDir.relativize(targetFile).toString();
+    }
+
+    /**
+     * Valida el subdirectorio y el nombre y devuelve la ruta final del archivo,
+     * garantizando que quede exactamente un elemento por debajo del subdirectorio
+     * y que todo siga dentro del {@code baseDir}.
+     *
+     * <p>Se usa en las dos vías de guardado (multipart y bytes) para que ninguna
+     * se salte la sanitización.</p>
+     */
+    private Path prepararDestino(String nombreOriginal, String subdirectorio) throws IOException {
         // Sanitizamos el subdirectorio y resolvemos contra baseDir, comprobando
         // que no escape (defensa en profundidad: el caller usa ids numéricos).
         // A diferencia de resolver(), aquí el propio baseDir es válido como
@@ -54,25 +85,18 @@ public class AlmacenamientoDiscoLocal implements AlmacenamientoArchivos {
 
         // Nunca usar el nombre original tal cual: extrae solo el nombre base y
         // descarta cualquier componente de ruta (../, subcarpetas, etc.).
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null || originalFilename.isBlank()) {
-            originalFilename = "unnamed";
+        if (nombreOriginal == null || nombreOriginal.isBlank()) {
+            nombreOriginal = "unnamed";
         }
-        String safeName = extraerNombreSeguro(originalFilename);
+        String safeName = extraerNombreSeguro(nombreOriginal);
 
         // "." y ".." colapsan sobre targetDir o su padre: el nombre debe aportar
         // exactamente un elemento real debajo de targetDir.
         Path targetFile = targetDir.resolve(safeName).normalize();
         if (!targetDir.equals(targetFile.getParent()) || !targetFile.startsWith(baseDir)) {
-            throw new IOException("Nombre de archivo inválido o path traversal: " + originalFilename);
+            throw new IOException("Nombre de archivo inválido o path traversal: " + nombreOriginal);
         }
-
-        try (InputStream inputStream = file.getInputStream()) {
-            Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
-        }
-
-        // Return relative path from baseDir
-        return baseDir.relativize(targetFile).toString();
+        return targetFile;
     }
 
     @Override

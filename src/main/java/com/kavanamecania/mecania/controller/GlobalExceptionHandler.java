@@ -1,5 +1,8 @@
 package com.kavanamecania.mecania.controller;
 
+import com.kavanamecania.mecania.domain.busqueda.BusquedaException;
+import com.kavanamecania.mecania.domain.descarga.DescargaException;
+import com.kavanamecania.mecania.domain.descarga.MotivoDescarga;
 import com.kavanamecania.mecania.domain.exception.VehiculoDuplicadoException;
 import com.kavanamecania.mecania.domain.exception.VehiculoNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -35,6 +38,38 @@ public class GlobalExceptionHandler {
                         f -> f.getDefaultMessage() == null ? "inválido" : f.getDefaultMessage(),
                         (a, b) -> a));
         return body(HttpStatus.BAD_REQUEST, "validacion", "Datos inválidos", fields);
+    }
+
+    /**
+     * La búsqueda externa falló (bloqueo anti-bot, error HTTP o caída de red).
+     * Se responde 503 con mensaje explícito: el usuario debe poder distinguir
+     * "el buscador no responde" de "no hay resultados".
+     */
+    @ExceptionHandler(BusquedaException.class)
+    public ResponseEntity<Map<String, Object>> busquedaNoDisponible(BusquedaException ex) {
+        return body(HttpStatus.SERVICE_UNAVAILABLE, "buscador_no_disponible", ex.getMessage(), null);
+    }
+
+    /** Descarga de un manual rechazada o fallida: código según el motivo. */
+    @ExceptionHandler(DescargaException.class)
+    public ResponseEntity<Map<String, Object>> descargaFallida(DescargaException ex) {
+        String codigo = switch (ex.motivo()) {
+            case URL_INVALIDA -> "url_no_valida";
+            case HOST_NO_PERMITIDO -> "host_no_permitido";
+            case TIPO_NO_SOPORTADO -> "tipo_no_soportado";
+            case DEMASIADO_GRANDE -> "demasiado_grande";
+            case ERROR_RED -> "descarga_fallida";
+        };
+        return body(estadoDeDescarga(ex.motivo()), codigo, ex.getMessage(), null);
+    }
+
+    private static HttpStatus estadoDeDescarga(MotivoDescarga motivo) {
+        return switch (motivo) {
+            case URL_INVALIDA, HOST_NO_PERMITIDO -> HttpStatus.BAD_REQUEST;
+            case TIPO_NO_SOPORTADO -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+            case DEMASIADO_GRANDE -> HttpStatus.PAYLOAD_TOO_LARGE;
+            case ERROR_RED -> HttpStatus.BAD_GATEWAY;
+        };
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

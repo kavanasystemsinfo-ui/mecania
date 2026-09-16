@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface DocumentoRepository extends JpaRepository<Documento, Long> {
     List<Documento> findByVehiculoId(Long vehiculoId);
     Optional<Documento> findByIdAndVehiculoId(Long id, Long vehiculoId);
+    Optional<Documento> findByVehiculoIdAndOrigenUrl(Long vehiculoId, String origenUrl);
 }

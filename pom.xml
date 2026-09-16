@@ -21,6 +21,7 @@
 		<testcontainers.version>1.19.8</testcontainers.version>
 		<pdfbox.version>3.0.3</pdfbox.version>
 		<poi.version>5.3.0</poi.version>
+		<jsoup.version>1.17.2</jsoup.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
@@ -97,6 +98,12 @@
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
 			<version>${poi.version}</version>
+		</dependency>
+		<!-- Jsoup: parseo del HTML del buscador (búsqueda asistida de manuales, ADR 005) -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>${jsoup.version}</version>
 		</dependency>
 		<!-- JUnit Jupiter (included in spring-boot-starter-test) -->
 		<dependency>

@@ -139,6 +139,28 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <hr>
+                        <h6>Buscar manuales en internet</h6>
+                        <p class="text-muted small mb-2">
+                            Búsqueda asistida: se consultan manuales públicos en la web y se listan como candidatos.
+                            No se descarga nada hasta que pulses <strong>Importar</strong>, y la URL propuesta puede
+                            no ser el manual exacto de tu vehículo.
+                        </p>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="searchQuery"
+                                   placeholder="Consulta opcional: cambio de aceite, manual de taller...">
+                            <button class="btn btn-outline-primary" id="searchManualsBtn" type="button">Buscar</button>
+                        </div>
+                        <div id="searchAlertContainer"></div>
+                        <div id="candidateList" class="mb-3"></div>
+
+                        <h6>Importar por URL</h6>
+                        <div class="input-group">
+                            <input type="url" class="form-control" id="manualUrl" placeholder="https://.../manual.pdf">
+                            <button class="btn btn-outline-secondary" id="importUrlBtn" type="button">Importar URL</button>
+                        </div>
+                        <div class="form-text mb-3">Formatos admitidos: PDF, TXT, DOCX. Máximo 10 MB.</div>
                     </div>
                 </div>
             </div>
@@ -221,6 +243,8 @@ function clearForm() {
 
 function loadDocumentsForVehicle(vehicleId) {
     currentVehicleId = vehicleId;
+    // Los candidatos de búsqueda pertenecen al vehículo anterior: se descartan.
+    document.getElementById('candidateList').innerHTML = '';
     // Update tab title
     document.getElementById('document-tab').textContent = `Documentos (vehículo ${vehicleId})`;
     // Load documents
@@ -238,7 +262,7 @@ function loadDocumentsForVehicle(vehicleId) {
                 tr.onclick = () => previewDocument(doc.id, doc.nombre);
                 tr.innerHTML = `
                     <td>${idx + 1}</td>
-                    <td>${doc.nombre}</td>
+                    <td>${doc.nombre}${doc.origenUrl ? `<br><a href="${doc.origenUrl}" target="_blank" rel="noopener" class="small text-muted">origen: ${fuenteDe(doc.origenUrl)}</a>` : ''}</td>
                     <td>${doc.tipo}</td>
                     <td>${formatFileSize(doc.tamanoBytes)}</td>
                     <td><span class="badge bg-${getEstadoBadgeColor(doc.estado)}">${doc.estado}</span></td>
@@ -344,6 +368,135 @@ async function uploadDocument() {
     } catch (err) {
         showDocumentAlert('Error al subir documento: ' + err.message, 'danger');
         console.error(err);
+    }
+}
+
+function fuenteDe(url) {
+    try {
+        return new URL(url).host;
+    } catch (e) {
+        return url;
+    }
+}
+
+function showSearchAlert(message, type = 'info') {
+    showAlert(message, type, 'searchAlertContainer');
+}
+
+async function buscarManuales() {
+    if (!currentVehicleId) {
+        showSearchAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    const consulta = document.getElementById('searchQuery').value.trim();
+    const contenedor = document.getElementById('candidateList');
+    contenedor.textContent = 'Buscando manuales...';
+
+    try {
+        const url = `${apiBase}/${currentVehicleId}/manuales/candidatos`
+            + (consulta ? `?q=${encodeURIComponent(consulta)}` : '');
+        const resp = await fetch(url);
+        if (!resp.ok) {
+            const errorData = await resp.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP ${resp.status}`);
+        }
+        renderCandidatos(await resp.json());
+    } catch (err) {
+        contenedor.innerHTML = '';
+        showSearchAlert('La búsqueda no se pudo completar: ' + err.message, 'danger');
+        console.error(err);
+    }
+}
+
+function renderCandidatos(candidatos) {
+    const contenedor = document.getElementById('candidateList');
+    contenedor.innerHTML = '';
+
+    if (!candidatos.length) {
+        // Honestidad: cero resultados no es un error, pero tampoco es "ya está".
+        contenedor.innerHTML = '<div class="alert alert-warning py-2 small mb-0">'
+            + 'El buscador no devolvió resultados para esta consulta. Prueba con otras palabras '
+            + 'o pega la URL del manual a mano.</div>';
+        return;
+    }
+
+    candidatos.forEach(candidato => {
+        const fila = document.createElement('div');
+        fila.className = 'border rounded p-2 mb-2 d-flex justify-content-between align-items-start';
+
+        const info = document.createElement('div');
+        info.className = 'me-2';
+        const titulo = document.createElement('div');
+        titulo.className = 'fw-semibold';
+        titulo.textContent = candidato.titulo;
+        const enlace = document.createElement('a');
+        enlace.href = candidato.url;
+        enlace.target = '_blank';
+        enlace.rel = 'noopener';
+        enlace.className = 'small';
+        enlace.textContent = candidato.url;
+        const snippet = document.createElement('div');
+        snippet.className = 'small text-muted';
+        snippet.textContent = candidato.snippet || '';
+        info.append(titulo, enlace, snippet);
+
+        const acciones = document.createElement('div');
+        acciones.className = 'text-end';
+        const badge = document.createElement('span');
+        badge.className = `badge bg-${candidato.pdf ? 'danger' : 'secondary'} mb-1`;
+        badge.textContent = candidato.pdf ? 'PDF' : 'web';
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'btn btn-sm btn-primary d-block';
+        boton.textContent = 'Importar';
+        boton.addEventListener('click', () => importarManual(candidato.url, boton));
+        acciones.append(badge, boton);
+
+        fila.append(info, acciones);
+        contenedor.appendChild(fila);
+    });
+}
+
+async function importarManual(url, boton) {
+    if (!currentVehicleId) {
+        showSearchAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    if (!url) {
+        showSearchAlert('Pega primero la URL del manual que quieres importar', 'warning');
+        return;
+    }
+    if (boton) {
+        boton.disabled = true;
+        boton.textContent = 'Importando...';
+    }
+
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/manuales/importar`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url})
+        });
+        if (!resp.ok) {
+            const errorData = await resp.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        if (data.yaExistia) {
+            showSearchAlert(`Este manual ya estaba importado: ${data.documento.nombre}`, 'info');
+        } else {
+            showSearchAlert(`Manual importado: ${data.documento.nombre}. Se está procesando (extracción y embeddings).`, 'success');
+        }
+        document.getElementById('manualUrl').value = '';
+        await loadDocumentsForVehicle(currentVehicleId);
+    } catch (err) {
+        showSearchAlert('No se pudo importar el manual: ' + err.message, 'danger');
+        console.error(err);
+    } finally {
+        if (boton) {
+            boton.disabled = false;
+            boton.textContent = 'Importar';
+        }
     }
 }
 
@@ -455,6 +608,16 @@ document.getElementById('refreshDocumentsBtn').addEventListener('click', () => {
     }
 });
 document.getElementById('uploadDocumentBtn').addEventListener('click', uploadDocument);
+document.getElementById('searchManualsBtn').addEventListener('click', buscarManuales);
+document.getElementById('searchQuery').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        buscarManuales();
+    }
+});
+document.getElementById('importUrlBtn').addEventListener('click', () => {
+    importarManual(document.getElementById('manualUrl').value.trim());
+});
 document.getElementById('documentFile').addEventListener('change', function() {
     // Show filename next to button when file selected
     const fileName = this.value.split('\\').pop().split('/').pop();
