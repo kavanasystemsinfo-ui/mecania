@@ -68,6 +68,9 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="alertas-tab" data-bs-toggle="tab" data-bs-target="#alertas-tab-pane" type="button" role="tab" aria-controls="alertas-tab-pane" aria-selected="false">Alertas</button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-tab-pane" type="button" role="tab" aria-controls="chat-tab-pane" aria-selected="false">Chat</button>
+                    </li>
                 </ul>
 
                 <!-- Tab panes -->
@@ -228,6 +231,19 @@
                         <hr>
                         <button class="btn btn-outline-warning" id="revisarVencidasBtn">Revisar vencidas</button>
                         <div id="vencidasContainer" class="mt-2"></div>
+                    </div>
+
+                    <!-- Chat tab -->
+                    <div class="tab-pane fade" id="chat-tab-pane" role="tabpanel" aria-labelledby="chat-tab">
+                        <div id="chatAlertContainer"></div>
+                        <p class="text-muted small mb-2">Pregunta al asistente sobre los manuales de este vehículo. Responde solo con lo que hay en tus manuales y te muestra de dónde saca cada dato.</p>
+                        <form id="chatForm" class="mb-3">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="chatPregunta" placeholder="Ej: ¿cada cuántos kilómetros se cambia el aceite?" required>
+                                <button type="submit" class="btn btn-primary" id="enviarChatBtn">Preguntar</button>
+                            </div>
+                        </form>
+                        <div id="chatRespuesta"></div>
                     </div>
                 </div>
             </div>
@@ -828,6 +844,43 @@ document.getElementById('alertas-tab').addEventListener('shown.bs.tab', () => {
         loadAlertasForVehicle();
     }
 });
+
+async function enviarPregunta(e) {
+    e.preventDefault();
+    if (!currentVehicleId) {
+        showAlert('Selecciona un vehículo primero', 'warning', 'chatAlertContainer');
+        return;
+    }
+    const pregunta = document.getElementById('chatPregunta').value.trim();
+    if (!pregunta) return;
+    const cont = document.getElementById('chatRespuesta');
+    cont.innerHTML = '<div class="text-muted small">Consultando los manuales…</div>';
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/chat`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ pregunta })
+        });
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.message || `HTTP ${resp.status}`);
+        }
+        const data = await resp.json();
+        const tipo = data.sinBase ? 'warning' : 'info';
+        let html = `<div class="alert alert-${tipo} mb-2">${data.respuesta}</div>`;
+        if (data.fuentes && data.fuentes.length) {
+            html += '<div class="small fw-bold text-muted">Fuentes:</div><ul class="small text-muted mb-0">';
+            data.fuentes.forEach(f => {
+                html += `<li>[manual ${f.documentoId}, fragmento ${f.posicion}, similitud ${Math.round(f.similitud * 100)}%] ${f.texto.substring(0, 120)}…</li>`;
+            });
+            html += '</ul>';
+        }
+        cont.innerHTML = html;
+    } catch (err) {
+        cont.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+    }
+}
+document.getElementById('chatForm').addEventListener('submit', enviarPregunta);
 
 // Initial load
 loadVehicles();
