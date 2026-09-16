@@ -10,6 +10,7 @@ import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
 import com.kavanamecania.mecania.domain.vector.RepositorioVectores;
 import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
+import com.kavanamecania.mecania.infrastructure.repository.AlertaRepository;
 import com.kavanamecania.mecania.infrastructure.repository.DocumentoRepository;
 import com.kavanamecania.mecania.infrastructure.repository.FragmentoRepository;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
@@ -46,6 +47,7 @@ class DocumentoProcessorIT {
 
     @Autowired private DocumentoProcessor processor;
     @Autowired private DocumentoRepository documentoRepository;
+    @Autowired private AlertaRepository alertaRepository;
     @Autowired private VehiculoRepository vehiculoRepository;
     @Autowired private FragmentoRepository fragmentoRepository;
 
@@ -55,6 +57,7 @@ class DocumentoProcessorIT {
 
     @BeforeEach
     void setUp() throws EmbeddingException {
+        alertaRepository.deleteAll();
         fragmentoRepository.deleteAll();
         documentoRepository.deleteAll();
         vehiculoRepository.deleteAll();

@@ -6,12 +6,14 @@ import com.kavanamecania.mecania.config.SecurityConfig;
 import com.kavanamecania.mecania.domain.model.Combustible;
 import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.domain.service.VehiculoService;
+import com.kavanamecania.mecania.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -23,11 +25,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = VehiculoController.class)
 @Import(SecurityConfig.class)
+@TestPropertySource(properties = "mecania.auth.enabled=false")
 class VehiculoControllerTest {
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper om;
     @MockBean VehiculoService service;
+    @MockBean JwtService jwtService;
 
     @Test
     void post_crea_vehiculo_y_devuelve_201_con_location() throws Exception {

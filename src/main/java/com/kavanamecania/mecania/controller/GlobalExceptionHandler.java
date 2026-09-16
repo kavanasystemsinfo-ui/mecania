@@ -6,6 +6,8 @@ import com.kavanamecania.mecania.domain.descarga.DescargaException;
 import com.kavanamecania.mecania.domain.descarga.MotivoDescarga;
 import com.kavanamecania.mecania.domain.embedding.EmbeddingException;
 import com.kavanamecania.mecania.domain.exception.AlertaNotFoundException;
+import com.kavanamecania.mecania.domain.exception.CredencialesInvalidasException;
+import com.kavanamecania.mecania.domain.exception.UsuarioYaExisteException;
 import com.kavanamecania.mecania.domain.exception.VehiculoDuplicadoException;
 import com.kavanamecania.mecania.domain.exception.VehiculoNotFoundException;
 import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
@@ -97,6 +99,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(VectorPersistenceException.class)
     public ResponseEntity<Map<String, Object>> vectoresNoDisponibles(VectorPersistenceException ex) {
         return body(HttpStatus.INTERNAL_SERVER_ERROR, "vector_no_disponible", ex.getMessage(), null);
+    }
+
+    /** Email ya registrado en el alta. */
+    @ExceptionHandler(UsuarioYaExisteException.class)
+    public ResponseEntity<Map<String, Object>> emailYaRegistrado(UsuarioYaExisteException ex) {
+        return body(HttpStatus.CONFLICT, "email_ya_registrado", ex.getMessage(), null);
+    }
+
+    /** Login fallido: email o contraseña incorrectos. */
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<Map<String, Object>> credencialesInvalidas(CredencialesInvalidasException ex) {
+        return body(HttpStatus.UNAUTHORIZED, "credenciales_invalidas", ex.getMessage(), null);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
