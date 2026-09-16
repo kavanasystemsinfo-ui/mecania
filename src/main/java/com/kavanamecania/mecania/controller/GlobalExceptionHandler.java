@@ -5,6 +5,7 @@ import com.kavanamecania.mecania.domain.chat.LlmException;
 import com.kavanamecania.mecania.domain.descarga.DescargaException;
 import com.kavanamecania.mecania.domain.descarga.MotivoDescarga;
 import com.kavanamecania.mecania.domain.embedding.EmbeddingException;
+import com.kavanamecania.mecania.domain.exception.AlertaNotFoundException;
 import com.kavanamecania.mecania.domain.exception.VehiculoDuplicadoException;
 import com.kavanamecania.mecania.domain.exception.VehiculoNotFoundException;
 import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
@@ -26,6 +27,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(VehiculoNotFoundException.class)
     public ResponseEntity<Map<String, Object>> notFound(VehiculoNotFoundException ex) {
         return body(HttpStatus.NOT_FOUND, "vehiculo_no_encontrado", ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(AlertaNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> alertaNoEncontrada(AlertaNotFoundException ex) {
+        return body(HttpStatus.NOT_FOUND, "alerta_no_encontrada", ex.getMessage(), null);
     }
 
     @ExceptionHandler(VehiculoDuplicadoException.class)

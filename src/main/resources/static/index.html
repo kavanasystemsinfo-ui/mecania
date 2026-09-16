@@ -65,6 +65,9 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="document-tab" data-bs-toggle="tab" data-bs-target="#document-tab-pane" type="button" role="tab" aria-controls="document-tab-pane" aria-selected="false">Documentos</button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="alertas-tab" data-bs-toggle="tab" data-bs-target="#alertas-tab-pane" type="button" role="tab" aria-controls="alertas-tab-pane" aria-selected="false">Alertas</button>
+                    </li>
                 </ul>
 
                 <!-- Tab panes -->
@@ -161,6 +164,70 @@
                             <button class="btn btn-outline-secondary" id="importUrlBtn" type="button">Importar URL</button>
                         </div>
                         <div class="form-text mb-3">Formatos admitidos: PDF, TXT, DOCX. Máximo 10 MB.</div>
+                    </div>
+
+                    <!-- Alertas tab -->
+                    <div class="tab-pane fade" id="alertas-tab-pane" role="tabpanel" aria-labelledby="alertas-tab">
+                        <div id="alertaAlertContainer"></div>
+
+                        <h6>Crear alerta</h6>
+                        <form id="alertaForm" class="mb-3">
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <label class="form-label">Tipo</label>
+                                    <select class="form-select" id="alertaTipo" required>
+                                        <option value="ITV" selected>ITV</option>
+                                        <option value="ACEITE">Aceite</option>
+                                        <option value="FRENOS">Frenos</option>
+                                        <option value="CUSTOM">Custom</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Descripción</label>
+                                    <input type="text" class="form-control" id="alertaDescripcion" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Fecha</label>
+                                    <input type="date" class="form-control" id="alertaFecha" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Repetitividad</label>
+                                    <select class="form-select" id="alertaRepetitividad" required>
+                                        <option value="UNICA" selected>Única</option>
+                                        <option value="MENSUAL">Mensual</option>
+                                        <option value="ANUAL">Anual</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <button type="submit" class="btn btn-primary me-2" id="crearAlertaBtn">Crear alerta</button>
+                                <button type="button" class="btn btn-outline-secondary" id="refreshAlertasBtn">Actualizar lista</button>
+                            </div>
+                        </form>
+
+                        <hr>
+                        <h6>Alertas del vehículo:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-borderless" id="alertasTable">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Descripción</th>
+                                        <th>Tipo</th>
+                                        <th>Fecha</th>
+                                        <th>Repetitividad</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alertasTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <hr>
+                        <button class="btn btn-outline-warning" id="revisarVencidasBtn">Revisar vencidas</button>
+                        <div id="vencidasContainer" class="mt-2"></div>
                     </div>
                 </div>
             </div>
@@ -500,6 +567,123 @@ async function importarManual(url, boton) {
     }
 }
 
+function showAlertaAlert(message, type = 'info') {
+    showAlert(message, type, 'alertaAlertContainer');
+}
+
+async function loadAlertasForVehicle() {
+    if (!currentVehicleId) {
+        showAlertaAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const alertas = await resp.json();
+        const tbody = document.getElementById('alertasTableBody');
+        tbody.innerHTML = '';
+        alertas.forEach((a, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${idx + 1}</td>
+                <td>${a.descripcion}</td>
+                <td>${a.tipo}</td>
+                <td>${a.fecha}</td>
+                <td>${a.repetitividad}</td>
+                <td><span class="badge bg-${a.activa ? 'success' : 'secondary'}">${a.activa ? 'Activa' : 'Inactiva'}</span></td>
+                <td><button class="btn btn-sm btn-outline-danger" onclick="deleteAlerta(${a.id})">Eliminar</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        showAlertaAlert('Error al cargar alertas: ' + err.message, 'danger');
+        console.error(err);
+    }
+}
+
+async function createAlerta(event) {
+    event.preventDefault();
+    if (!currentVehicleId) {
+        showAlertaAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    const tipo = document.getElementById('alertaTipo').value;
+    const descripcion = document.getElementById('alertaDescripcion').value.trim();
+    const fecha = document.getElementById('alertaFecha').value;
+    const repetitividad = document.getElementById('alertaRepetitividad').value;
+
+    if (!tipo || !descripcion || !fecha || !repetitividad) {
+        showAlertaAlert('Por favor complete todos los campos', 'warning');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tipo, descripcion, fecha, repetitividad})
+        });
+        if (!resp.ok) {
+            const errorData = await resp.json().catch(() => ({}));
+            throw new Error(errorData.message || `HTTP ${resp.status}`);
+        }
+        showAlertaAlert('Alerta creada exitosamente', 'success');
+        document.getElementById('alertaForm').reset();
+        await loadAlertasForVehicle();
+    } catch (err) {
+        showAlertaAlert('Error al crear alerta: ' + err.message, 'danger');
+        console.error(err);
+    }
+}
+
+async function deleteAlerta(alertaId) {
+    if (!currentVehicleId) {
+        showAlertaAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    if (!confirm('¿Está seguro de eliminar esta alerta?')) return;
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas/${alertaId}`, {
+            method: 'DELETE'
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        showAlertaAlert('Alerta eliminada exitosamente', 'success');
+        await loadAlertasForVehicle();
+    } catch (err) {
+        showAlertaAlert('Error al eliminar alerta: ' + err.message, 'danger');
+        console.error(err);
+    }
+}
+
+async function revisarAlertasVencidas() {
+    if (!currentVehicleId) {
+        showAlertaAlert('Por favor seleccione un vehículo primero', 'warning');
+        return;
+    }
+    const contenedor = document.getElementById('vencidasContainer');
+    contenedor.innerHTML = 'Consultando alertas vencidas...';
+    try {
+        const resp = await fetch(`${apiBase}/${currentVehicleId}/alertas/vencidas`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const vencidas = await resp.json();
+        if (!vencidas.length) {
+            contenedor.innerHTML = '<div class="alert alert-success py-2 small mb-0">No hay alertas vencidas.</div>';
+            return;
+        }
+        contenedor.innerHTML = '';
+        vencidas.forEach(v => {
+            const div = document.createElement('div');
+            div.className = 'alert alert-warning py-2 mb-2';
+            div.innerHTML = `<strong>${v.tipo}</strong> — ${v.descripcion} <span class="text-muted small">(${v.fecha})</span>`;
+            contenedor.appendChild(div);
+        });
+    } catch (err) {
+        contenedor.innerHTML = '';
+        showAlertaAlert('Error al revisar alertas vencidas: ' + err.message, 'danger');
+        console.error(err);
+    }
+}
+
 document.getElementById('vehicleForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const vehicle = {
@@ -574,6 +758,8 @@ function editVehicle(id) {
             modal.show();
             // Load documents for this vehicle when editing
             loadDocumentsForVehicle(v.id);
+            // Load alerts for this vehicle when editing
+            loadAlertasForVehicle();
             // Switch to documents tab
             const documentTabEl = document.getElementById('document-tab');
             const documentTab = new bootstrap.Tab(documentTabEl);
@@ -625,6 +811,21 @@ document.getElementById('documentFile').addEventListener('change', function() {
         this.nextElementSibling.textContent = `Archivo seleccionado: ${fileName}`;
     } else {
         this.nextElementSibling.textContent = 'Formatos permitidos: PDF, TXT, DOCX. Máximo 10 MB.';
+    }
+});
+
+document.getElementById('alertaForm').addEventListener('submit', createAlerta);
+document.getElementById('refreshAlertasBtn').addEventListener('click', () => {
+    if (currentVehicleId) {
+        loadAlertasForVehicle();
+    } else {
+        showAlertaAlert('Por favor seleccione un vehículo primero', 'warning');
+    }
+});
+document.getElementById('revisarVencidasBtn').addEventListener('click', revisarAlertasVencidas);
+document.getElementById('alertas-tab').addEventListener('shown.bs.tab', () => {
+    if (currentVehicleId) {
+        loadAlertasForVehicle();
     }
 });
 
