@@ -13,6 +13,7 @@ Este archivo lista todas las decisiones arquitectónicas documentadas en forma d
 | [ADR-005](docs/adr/005-busqueda-asistida-manuales.md) | Búsqueda asistida de manuales (DuckDuckGo HTML + Jsoup) y descarga selectiva con validación SSRF | ✅ Implementado | 2026-09-16 |
 | [ADR-006](docs/adr/006-chat-rag-por-vehiculo.md) | Chat RAG por vehículo con pgvector (persistencia de vectores por JDBC nativo + umbral de similitud + LLM con fuentes) | ✅ Implementado | 2026-09-16 |
 | [ADR-007](docs/adr/007-alertas-mantenimiento.md) | Alertas de mantenimiento por vehículo (CRUD anidado + RevisorAlertas con repetitividad y notificación por log) | ✅ Implementado | 2026-09-16 |
+| [ADR-008](docs/adr/008-autenticacion-jwt-multi-tenencia.md) | Autenticación JWT (jjwt HS256) y multi-tenencia (cada usuario solo ve/toca sus vehículos) | ✅ Implementado | 2026-09-16 |
 
 ## Resumen ejecutivo (una línea por ADR)
 
@@ -23,10 +24,11 @@ Este archivo lista todas las decisiones arquitectónicas documentadas en forma d
 5. **ADR-005 — Búsqueda asistida y descarga selectiva.** La búsqueda de manuales usa el HTML público de DuckDuckGo (Jsoup) en lugar de una API de pago como Tavily (descartada por coste, ADR 005). El sistema solo PROPONE candidatos; la descarga se hace cuando el usuario acepta una URL, con validación de host en cada salto (SSRF), tope de 10 MB y tipos PDF/TXT/DOCX. Un challenge anti-bot se traduce a 503 explícito, nunca a "sin resultados".
 6. **ADR-006 — Chat RAG por vehículo.** Los embeddings se persisten en una tabla auxiliar `fragmento_embeddings` por JDBC nativo (Hibernate no mapea `vector`); la búsqueda por coseno (`<=>`) filtra siempre por `vehiculo_id`. El chat vectoriza la pregunta, recupera top-K por encima de un umbral de similitud y, si no hay fragmentos relevantes, responde "sin base" sin llamar al LLM. La respuesta devuelve las fuentes que la sostienen.
 7. **ADR-007 — Alertas de mantenimiento.** CRUD anidado bajo `/api/vehiculos/{id}/alertas` (pertenencia al vehículo estructural). `Repetitividad` (UNICA/MENSUAL/ANUAL) con lógica de vencimiento en `RevisorAlertas`: las únicas se desactivan al vencer y las repetitivas avanzan su fecha saltando ocurrencias pasadas. La revisión es manual por endpoint y la notificación es un log de consola (webhook futuro).
+8. **ADR-008 — Autenticación y multi-tenencia.** JWT HS256 con `jjwt` (register/login devuelven token, `JwtAuthenticationFilter` valida y extrae `uid`). `VehiculoRequest` ya no lleva `usuarioId`: el dueño sale del token y `VehiculoRepository.findByIdAndUsuarioId/existsByIdAndUsuarioId` garantizan que cada usuario solo ve/toca sus vehículos (404 en accesos ajenos). El secreto es de desarrollo y en despliegue irá en el entorno.
 
 ## Verificación de la documentación contra el código
 
 - Los ADRs reflejan el estado actual del código. Cada decisión incluye alternativas evaluadas y consecuencias, permitiendo a un nuevo ingeniero entender el trade-off tomado.
-- Los archivos `docs/adr/001-stack-tecnologico.md`, `docs/adr/002-seguridad-abierta-mvp.md`, `docs/adr/003-almacenamiento-manuales-disco-local.md`, `docs/adr/004-embeddings-y-procesamiento-async.md`, `docs/adr/005-busqueda-asistida-manuales.md`, `docs/adr/006-chat-rag-por-vehiculo.md` y `docs/adr/007-alertas-mantenimiento.md` están presentes y verificados.
-- **Tests reales**: 183 tests (162 unitarios + 21 de integración), todos verdes en `mvn verify` (Java 21). Detalle por suite en `docs/METRICS.md`. Cifra verificada ejecutando la suite, no por grep.
+- Los archivos `docs/adr/001-stack-tecnologico.md`, `docs/adr/002-seguridad-abierta-mvp.md`, `docs/adr/003-almacenamiento-manuales-disco-local.md`, `docs/adr/004-embeddings-y-procesamiento-async.md`, `docs/adr/005-busqueda-asistida-manuales.md`, `docs/adr/006-chat-rag-por-vehiculo.md`, `docs/adr/007-alertas-mantenimiento.md` y `docs/adr/008-autenticacion-jwt-multi-tenencia.md` están presentes y verificados.
+- **Tests reales**: 202 tests (173 unitarios + 29 de integración), todos verdes en `mvn verify` (Java 21). Detalle por suite en `docs/METRICS.md`. Cifra verificada ejecutando la suite, no por grep.
 - **Verificación end-to-end**: tras implementar la subida de documentos, se ha ejecutado un flujo completo vía `curl` (crear vehículo → subir PDF/TXT → listar → descargar) y se ha confirmado que el contenido descargado coincide con el original.

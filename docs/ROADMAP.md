@@ -41,12 +41,13 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~Servicio sencillo que revisa periódicamente y puede notificar.~~ ✅ `GET .../alertas/vencidas` + `RevisorAlertas` (desactiva únicas, avanza repetitivas); notificación por log de consola (webhook futuro)
 - ~~UI sencilla en frontend para crear/ver alertas.~~ ✅ pestaña "Alertas" en el modal del vehículo
 
-### Fase 6: Autenticación y multi-tenencia
-- Endpoints `/api/auth/register` y `/api/auth/login` que devuelven JWT.
-- Filtro Spring Security que valida JWT y extrae `usuarioId`.
-- Todos los endpoints protegidos excepto `/api/auth/*` y documentación OpenAPI.
-- Tests de flujos de autenticación y autorización.
-- ADR que documente la elección (JWT vs session, secret management, expiración).
+### Fase 6: Autenticación y multi-tenencia ✅
+- ~~Endpoints `/api/auth/register` y `/api/auth/login` que devuelven JWT.~~ ✅ (2026-09-16, ADR 008)
+- ~~Filtro Spring Security que valida JWT y extrae `usuarioId`.~~ ✅ `JwtAuthenticationFilter` + `SecurityUtils`
+- ~~Todos los endpoints protegidos excepto `/api/auth/*`.~~ ✅ `/api/auth/**` abierto, resto de `/api/**` exige token (`mecania.auth.enabled`)
+- ~~Tests de flujos de autenticación y autorización.~~ ✅ `JwtServiceTest`, `AuthServiceTest`, `AuthControllerIT`, `MultiTenenciaIT`
+- ~~ADR que documente la elección (JWT vs session, secret management, expiración).~~ ✅ ADR 008
+- UI de login en el front (index.html): ⏳ pendiente, es el siguiente paso de la fase.
 
 ### Fase 7: Despliegue y monitoreo
 - Pipeline GitHub Actions que ejecuta `mvn verify` y despliega a un entorno de staging (Render, Fly.io o similares).

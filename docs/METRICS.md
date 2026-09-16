@@ -5,20 +5,22 @@ Qué cubren los tests, no solo cuántos.
 ## Resumen
 
 Suite ejecutada con `mvn verify` (2026-09-16):
-**183 tests en 22 suites — todos verdes** (162 unitarios en `mvn test` + 21 de
+**202 tests en 26 suites — todos verdes** (173 unitarios en `mvn test` + 29 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
 ### Capa de controlador (VehiculoControllerTest)
-- **5 tests**: endpoints REST bajo condiciones variadas (listado total y por usuarioId, obtención por ID, creación exitosa y conflicto por duplicado, actualización, eliminación).
+- **5 tests**: endpoints REST del vehículo (listado del usuario autenticado, obtención por ID, creación exitosa, validación fallida → 400 con `fields`, y 404 por ID inexistente).
 
 ### Capa de controlador — integración (VehiculoControllerIT, BusquedaManualesControllerIT, AlertaControllerIT)
 - **VehiculoControllerIT (3)**: flujo real con contexto Spring (CRUD de vehículos sobre BD H2, validación de errores HTTP).
 - **AlertaControllerIT (2)**: flujo crear/listar/actualizar/eliminar (201/200/404/204) y revisión de vencidas que devuelve la alerta vencida y la deja desactivada.
 - **BusquedaManualesControllerIT (11)**: contrato HTTP de la Fase 3 con el buscador y el descargador mockeados: candidatos devueltos sin descargar nada, consulta libre traducida a "Toyota Corolla 2018 manual cambio de aceite", 503 con `buscador_no_disponible` cuando el buscador bloquea, 404 si el vehículo no existe, 201 al importar, 400 con URL vacía (validación) y con URL no http, 415 con tipo no soportado, 413 con archivo demasiado grande, 404 en importación de vehículo inexistente y **200 con `yaExistia: true` al reimportar sin duplicar documentos**.
+- **AuthControllerIT (6)**: contrato HTTP de autenticación con la seguridad REAL activa (perfil `test-auth`): registro 201 con token, registro duplicado 409, login 200 con token, login con contraseña incorrecta 401, endpoint protegido sin token 401 y con token 200.
+- **MultiTenenciaIT (2)**: un usuario autenticado no ve (404) ni puede borrar (404) vehículos ajenos, y el listado de un usuario sin vehículos propios está vacío.
 
 ### Capa de servicio (VehiculoServiceTest)
-- **7 tests**: lógica de servicio sin layer HTTP (findAll/findByUsuarioId, findById con/ sin existencia, create con duplicado y éxito, update, delete).
+- **7 tests**: lógica de servicio sin layer HTTP acotada al usuario (findByUsuarioId, findById con/sin existencia, create con duplicado y éxito, update, delete).
 
 ### Capa de servicio de documentos (DocumentoServiceTest)
 - **8 tests**: subida (PDF válido, TXT válido, extensión no soportada, archivo demasiado grande, vehículo inexistente), listado, pertenencia del documento al vehículo.
@@ -29,6 +31,12 @@ suite, no de contar `@Test` con grep.
 
 ### Capa de servicio de chat RAG (ChatManualesServiceTest)
 - **4 tests**: respuesta con los fragmentos relevantes devolviendo las fuentes; sin fragmentos por encima del umbral → "sin base" SIN llamar al LLM; descarte de fragmentos por debajo de `mecania.chat.similitud-minima` (el prompt no incluye el irrelevante); propagación del fallo del LLM.
+
+### Capa de seguridad — JWT (JwtServiceTest)
+- **6 tests**: token válido devuelve la identidad; token manipulado, de otro secreto o caducado → inválido; secreto demasiado corto o vacío → rechazado en construcción.
+
+### Capa de servicio de autenticación (AuthServiceTest)
+- **5 tests**: registro hashea la contraseña y devuelve token; email duplicado → excepción; login correcto devuelve token; contraseña incorrecta y email inexistente → excepción.
 
 ### Capa de servicio de alertas (AlertaServiceTest)
 - **10 tests**: crear (ok y vehículo inexistente), listar, actualizar (ok y no encontrada → `AlertaNotFoundException`), eliminar (ok y no encontrada), vencidas (única desactivada, mensual avanza, sin vencidas vacío).
@@ -70,7 +78,6 @@ suite, no de contar `@Test` con grep.
 - **Descarga real desde internet en CI**: cubierta con servidor local; los hosts públicos se validan con tests unitarios del validador.
 - **Persistencia y búsqueda pgvector en la suite**: la query SQL real (`<=>`, `PGobject`, `CREATE EXTENSION`) NO se cubre en la suite porque H2 no tiene pgvector. El puerto `RepositorioVectores` se mockea en los tests (lógica del chat y rollback), y el SQL real se verifica con un smoke test contra el PostgreSQL de desarrollo.
 - **Escenarios de concurrencia**: no se testa aún condiciones de carrera bajo carga alta; se asumirá en fases posteriores si el dominio lo requiere.
-- **Endpoints de autenticación**: no existen todavía; se cubrirán cuando se implemente login/registro.
 - **Testcontainers para PostgreSQL**: las dependencias están declaradas pero no se usan todavía; las pruebas actuales son unitarias con mocks o H2.
 
 ## Cómo leer este archivo

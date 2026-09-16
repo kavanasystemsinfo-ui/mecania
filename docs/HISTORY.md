@@ -2,6 +2,15 @@
 
 Evolución del proyecto Mecania y decisiones descartadas.
 
+## 2026-09-16 (Fase 6: autenticación y multi-tenencia)
+
+- **JWT HS256 con jjwt 0.11.5**: `POST /api/auth/register` (201) y `/api/auth/login` (200) devuelven token; `JwtAuthenticationFilter` valida y extrae `uid`; contraseñas con BCrypt.
+- **Protección**: `/api/auth/**` abierto, resto de `/api/**` exige token (401 con JSON). `mecania.auth.enabled=false` desactiva la seguridad en el perfil de test de lógica de negocio.
+- **Multi-tenencia**: `VehiculoRequest` ya no lleva `usuarioId` (el dueño sale del token); `VehiculoRepository.findByIdAndUsuarioId/existsByIdAndUsuarioId`; los controllers anidados (documentos, manuales, chat, alertas) verifican dueño con `SecurityUtils.usuarioIdActual()`. Acceso a un vehículo ajeno → 404.
+- **Tests**: la suite pasó de 183 a **202 tests** (173 unitarios + 29 de integración). Nuevos: `JwtServiceTest` (6), `AuthServiceTest` (5), `AuthControllerIT` (6), `MultiTenenciaIT` (2).
+- **ADR 008**: documenta JWT vs sesión vs OAuth2, la gestión del secreto (desarrollo vs entorno) y la multi-tenencia.
+- **Pendiente**: UI de login en `index.html` (el front queda roto hasta añadirla, es el siguiente paso de la fase).
+
 ## 2026-09-16 (Fase 5: alertas de mantenimiento)
 
 - **Entidad `Alerta`** con `TipoAlerta` (ITV/ACEITE/FRENOS/CUSTOM) y `Repetitividad` (UNICA/MENSUAL/ANUAL), asociada a `Vehiculo`.
