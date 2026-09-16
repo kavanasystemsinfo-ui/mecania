@@ -5,7 +5,7 @@ Qué cubren los tests, no solo cuántos.
 ## Resumen
 
 Suite ejecutada con `mvn verify` (2026-09-16):
-**202 tests en 26 suites — todos verdes** (173 unitarios en `mvn test` + 29 de
+**203 tests en 27 suites — todos verdes** (173 unitarios en `mvn test` + 30 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
@@ -18,6 +18,7 @@ suite, no de contar `@Test` con grep.
 - **BusquedaManualesControllerIT (11)**: contrato HTTP de la Fase 3 con el buscador y el descargador mockeados: candidatos devueltos sin descargar nada, consulta libre traducida a "Toyota Corolla 2018 manual cambio de aceite", 503 con `buscador_no_disponible` cuando el buscador bloquea, 404 si el vehículo no existe, 201 al importar, 400 con URL vacía (validación) y con URL no http, 415 con tipo no soportado, 413 con archivo demasiado grande, 404 en importación de vehículo inexistente y **200 con `yaExistia: true` al reimportar sin duplicar documentos**.
 - **AuthControllerIT (6)**: contrato HTTP de autenticación con la seguridad REAL activa (perfil `test-auth`): registro 201 con token, registro duplicado 409, login 200 con token, login con contraseña incorrecta 401, endpoint protegido sin token 401 y con token 200.
 - **MultiTenenciaIT (2)**: un usuario autenticado no ve (404) ni puede borrar (404) vehículos ajenos, y el listado de un usuario sin vehículos propios está vacío.
+- **HealthControllerIT (1)**: `/health` devuelve 200 `UP` sin autenticación (hace `SELECT 1` contra H2).
 
 ### Capa de servicio (VehiculoServiceTest)
 - **7 tests**: lógica de servicio sin layer HTTP acotada al usuario (findByUsuarioId, findById con/sin existencia, create con duplicado y éxito, update, delete).
@@ -70,7 +71,7 @@ suite, no de contar `@Test` con grep.
 - **18 tests**: guardar/leer/eliminar reales con tempdir, subdirectorio vacío, **3 tests de seguridad** (nombre con `../` se sanitiza y no escapa del baseDir; lectura y borrado con rutas traviesas se rechazan), hardening de nombres especiales (`/`, `.`, `..`, byte NUL) y rutas que colapsan sobre la raíz, más **5 tests de la vía `guardarArchivo(byte[])`** que usa la importación desde internet: escritura real, nombre travieso saneado, nombres especiales, contenido vacío rechazado y subdirectorio que escapa rechazado.
 
 ### Capa de infraestructura — procesamiento (DocumentoProcessorIT)
-- **5 tests de integración**: extrae→chunckea→persiste fragmentos, error sin API key marca documento ERROR sin fragmentos (espera determinista por polling, no Thread.sleep), **fallo a mitad** (embedding falla en el 2º fragmento → rollback real → CERO fragmentos), **se guarda un vector por fragmento** (id y embedding correctos) y **fallo del almacén de vectores revierte la transacción** (CERO fragmentos).
+- **5 tests de integración** (sobre H2, perfil `test`): extrae→chunckea→persiste fragmentos, error sin API key marca documento ERROR sin fragmentos (espera determinista por polling, no Thread.sleep), **fallo a mitad** (embedding falla en el 2º fragmento → rollback real → CERO fragmentos), **se guarda un vector por fragmento** (id y embedding correctos) y **fallo del almacén de vectores revierte la transacción** (CERO fragmentos).
 
 ## Qué NO está cubierto actualmente (y por qué)
 

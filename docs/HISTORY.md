@@ -2,6 +2,18 @@
 
 Evolución del proyecto Mecania y decisiones descartadas.
 
+## 2026-09-16 (Fase 7: despliegue y monitoreo)
+
+- **CI**: workflow `.github/workflows/ci.yml` que ejecuta `mvn verify` en cada push a `main` (y en PRs).
+- **Health check**: endpoint `/health` (200 `UP` / 503 `DOWN`) que hace `SELECT 1` contra la BD y no requiere auth (liveness para Render/Fly). Sin actuator: se evitó la dependencia (no estaba en el repo offline).
+- **DocumentoProcessorIT a H2**: antes corría contra el Postgres de desarrollo (destructivo y bloqueaba el CI sin Postgres); ahora usa `@ActiveProfiles("test")` y `PgVectorSchemaInitializer` ya saltaba H2.
+- **Docker**: `Dockerfile` multi-etapa (Maven → JRE 21) + `spring-boot-maven-plugin` (jar ejecutable) + `.dockerignore` + `render.yaml`.
+- **Config por entorno**: `DATABASE_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET` por env vars con defaults de desarrollo.
+- **Logging**: `logback-spring.xml` con rotación (10 MB, 7 días, tope 100 MB).
+- **Docs**: `docs/DEPLOY.md` con la guía Render + Neon.
+- **Tests**: 203 tests (173 unitarios + 30 de integración), +1 por `HealthControllerIT`.
+- **Pendiente**: el deploy real a Render + Neon (requiere las cuentas del titular).
+
 ## 2026-09-16 (Fase 6: autenticación y multi-tenencia)
 
 - **JWT HS256 con jjwt 0.11.5**: `POST /api/auth/register` (201) y `/api/auth/login` (200) devuelven token; `JwtAuthenticationFilter` valida y extrae `uid`; contraseñas con BCrypt.

@@ -50,10 +50,11 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~UI de login en el front (index.html).~~ ✅ overlay Entrar/Crear cuenta, sesión en localStorage, token en todas las llamadas y botón Salir.
 
 ### Fase 7: Despliegue y monitoreo
-- Pipeline GitHub Actions que ejecuta `mvn verify` y despliega a un entorno de staging (Render, Fly.io o similares).
-- Health checks endpoints (`/actuator/health`).
-- Logging estructurado y rotación de logs.
-- Documentación de pasos para desplegar en producción.
+- ~~Pipeline GitHub Actions que ejecuta `mvn verify`.~~ ✅ `.github/workflows/ci.yml` (verde en cada push a main y en PRs)
+- ~~Health checks endpoints.~~ ✅ `/health` (200 UP / 503 DOWN, hace `SELECT 1` contra la BD, sin auth)
+- ~~Logging estructurado y rotación de logs.~~ ✅ `logback-spring.xml` (consola + archivo, 10 MB / 7 días / tope 100 MB)
+- ~~Documentación de pasos para desplegar en producción.~~ ✅ `docs/DEPLOY.md` + `Dockerfile` + `render.yaml`
+- Desplegar a un servicio managed (Render + Neon): ⏳ pendiente, requiere las cuentas del titular (se guía un paso por vez).
 
 ## Lo que NO haremos (por ahora o nunca)
 - **APIs de búsqueda de pago** (Tavily, AIsa, Brave Search): la búsqueda de manuales usa el HTML público de DuckDuckGo con Jsoup (Fase 3, ADR 005) para no consumir saldo del titular del proyecto.
