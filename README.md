@@ -5,7 +5,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![pgvector](https://img.shields.io/badge/pgvector-enabled-orange)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-lightgrey)
-![Tests](https://img.shields.io/badge/tests-164-brightgreen)
+![Tests](https://img.shields.io/badge/tests-183-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 🎯 Qué es Mecania y por qué existe (como pieza de portafolio)
@@ -67,6 +67,7 @@ graph LR
 - [ADR 004: Embeddings y procesamiento asíncrono](docs/adr/004-embeddings-y-procesamiento-async.md) — extracción, chunking 512/64 y `@Async` disparado tras el commit.
 - [ADR 005: Búsqueda asistida de manuales y descarga selectiva](docs/adr/005-busqueda-asistida-manuales.md) — DuckDuckGo HTML en vez de API de pago, validación SSRF al descargar y errores explícitos por motivo.
 - [ADR 006: Chat RAG por vehículo con pgvector](docs/adr/006-chat-rag-por-vehiculo.md) — persistencia de vectores por JDBC nativo, búsqueda por coseno restringida al vehículo y LLM con fuentes verificables.
+- [ADR 007: Alertas de mantenimiento por vehículo](docs/adr/007-alertas-mantenimiento.md) — CRUD anidado, lógica de repetitividad y revisión de vencidas.
 - [docs/HISTORY.md](docs/HISTORY.md) — evolución y decisiones descartadas.
 - [docs/METRICS.md](docs/METRICS.md) — qué cubren los tests (no solo cuántos).
 - [docs/ROADMAP.md](docs/ROADMAP.md) — plan honesto de fases futuras.
@@ -185,6 +186,16 @@ curl -X POST http://localhost:8080/api/vehiculos/1/chat \
 
 Respuesta: `{ "respuesta": "...", "sinBase": false, "fuentes": [ { "documentoId": 5, "posicion": 0, "texto": "...", "similitud": 0.61 } ] }`. Ver [ADR 006](docs/adr/006-chat-rag-por-vehiculo.md).
 
+#### Alertas de mantenimiento (Fase 5)
+
+```bash
+curl -X POST http://localhost:8080/api/vehiculos/1/alertas \
+  -H "Content-Type: application/json" \
+  -d '{"tipo":"ITV","descripcion":"ITV","fecha":"2026-10-01","repetitividad":"ANUAL"}'
+```
+
+Listar: `GET /api/vehiculos/1/alertas`. Revisar vencidas (devuelve y desactiva/avanza): `GET /api/vehiculos/1/alertas/vencidas`. Ver [ADR 007](docs/adr/007-alertas-mantenimiento.md).
+
 > En la fase MVP todos los endpoints están abiertos (`permitAll()`). Ver [ADR 002](docs/adr/002-seguridad-abierta-mvp.md) para detalles.
 
 ## 📖 Aprendizajes clave
@@ -202,6 +213,7 @@ Durante la construcción inicial de Mecania, estos fueron aprendizajes concretos
 - **Seguridad:** En la fase actual, Mecania corre con seguridad abierta (`permitAll()`) para facilitar pruebas y demos. Esto **NO es apto para producción**. Ver ADR 002 para detalles y plan futuro.
 - **Frontend:** La interfaz Bootstrap es funcional pero mínima; se centra en demostrar la API, no en habilidades de diseño UI/UX.
 - **Búsqueda de manuales y LLM:** la búsqueda de manuales usa el HTML público de DuckDuckGo (ADR 005): puede fallar si el buscador bloquea la petición, y por eso existe el camino alternativo de pegar la URL a mano. El chat RAG (Fase 4) responde solo con los manuales del vehículo vía pgvector + OpenRouter y devuelve las fuentes; si no hay contexto relevante, responde "sin base" en vez de inventar (ADR 006).
+- **Alertas de mantenimiento:** la notificación es un log de consola (no hay email/push todavía) y la revisión de vencidas es manual vía endpoint (ADR 007).
 - **Autenticación de usuario:** aún no hay endpoints de registro/login; se añadirán cuando sea necesario demostrar manejo de identidad y multi-tenencia.
 
 ## 🙏 Créditos

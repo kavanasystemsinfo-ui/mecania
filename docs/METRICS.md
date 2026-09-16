@@ -5,15 +5,16 @@ Qué cubren los tests, no solo cuántos.
 ## Resumen
 
 Suite ejecutada con `mvn verify` (2026-09-16):
-**164 tests en 19 suites — todos verdes** (145 unitarios en `mvn test` + 19 de
+**183 tests en 22 suites — todos verdes** (162 unitarios en `mvn test` + 21 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
 ### Capa de controlador (VehiculoControllerTest)
 - **5 tests**: endpoints REST bajo condiciones variadas (listado total y por usuarioId, obtención por ID, creación exitosa y conflicto por duplicado, actualización, eliminación).
 
-### Capa de controlador — integración (VehiculoControllerIT, BusquedaManualesControllerIT)
+### Capa de controlador — integración (VehiculoControllerIT, BusquedaManualesControllerIT, AlertaControllerIT)
 - **VehiculoControllerIT (3)**: flujo real con contexto Spring (CRUD de vehículos sobre BD H2, validación de errores HTTP).
+- **AlertaControllerIT (2)**: flujo crear/listar/actualizar/eliminar (201/200/404/204) y revisión de vencidas que devuelve la alerta vencida y la deja desactivada.
 - **BusquedaManualesControllerIT (11)**: contrato HTTP de la Fase 3 con el buscador y el descargador mockeados: candidatos devueltos sin descargar nada, consulta libre traducida a "Toyota Corolla 2018 manual cambio de aceite", 503 con `buscador_no_disponible` cuando el buscador bloquea, 404 si el vehículo no existe, 201 al importar, 400 con URL vacía (validación) y con URL no http, 415 con tipo no soportado, 413 con archivo demasiado grande, 404 en importación de vehículo inexistente y **200 con `yaExistia: true` al reimportar sin duplicar documentos**.
 
 ### Capa de servicio (VehiculoServiceTest)
@@ -29,11 +30,17 @@ suite, no de contar `@Test` con grep.
 ### Capa de servicio de chat RAG (ChatManualesServiceTest)
 - **4 tests**: respuesta con los fragmentos relevantes devolviendo las fuentes; sin fragmentos por encima del umbral → "sin base" SIN llamar al LLM; descarte de fragmentos por debajo de `mecania.chat.similitud-minima` (el prompt no incluye el irrelevante); propagación del fallo del LLM.
 
+### Capa de servicio de alertas (AlertaServiceTest)
+- **10 tests**: crear (ok y vehículo inexistente), listar, actualizar (ok y no encontrada → `AlertaNotFoundException`), eliminar (ok y no encontrada), vencidas (única desactivada, mensual avanza, sin vencidas vacío).
+
 ### Capa de dominio — chunking (SlidingWindowChunkerTest)
 - **11 tests**: null/vacío, texto corto, tamaño exacto, overlap correcto, determinismo, tamaño máximo, validación de constructor (overlap >= chunkSize, negativo, chunkSize <= 0), overlap cero.
 
 ### Capa de dominio — embeddings (EmbeddingTest)
 - **5 tests**: construcción + inmutabilidad defensiva, null/vacío rechazados, formato pgvector, equals por contenido.
+
+### Capa de dominio — alertas (RevisorAlertasTest)
+- **7 tests**: lista vacía, futura no devuelta, inactiva no devuelta, única vencida devuelta y desactivada, mensual avanza un mes, anual salta ocurrencias pasadas, mensual muy vencida salta hasta el futuro.
 
 ### Capa de infraestructura — extracción (3 suites)
 - **PdfBoxTextExtractorTest (3)**: PDF extraído, PDF corrupto → ExtractionException, contenido vacío.

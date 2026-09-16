@@ -34,12 +34,12 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~Devuelve respuesta solo basada en los manuales del vehículo (no mezcla info de otros modelos).~~ ✅ prompt de sistema + "sin base" sin llamar al LLM
 - ~~Tests de relevancia y de que no se filtra información de otros vehículos.~~ ✅ 4 tests de servicio + restricción por `vehiculo_id` en la query (ver ADR 006)
 
-### Fase 5: Recordatorios y alertas de mantenimiento
-- Entidad `Alerta` (tipo: ITV, aceite, frenos, custom) asociada a `Vehiculo`.
-- Campos: descripción, fecha, repetitividad (única, mensual, anual), activa.
-- Endpoints CRUD de `/api/alertas`.
-- Servicio sencillo que revisa periódicamente (por ahora, al inicio de la app o mediante endpoint manual) y puede notificar (por consola o futuro webhook).
-- UI sencilla en frontend para crear/ver alertas.
+### Fase 5: Recordatorios y alertas de mantenimiento ✅
+- ~~Entidad `Alerta` (tipo: ITV, aceite, frenos, custom) asociada a `Vehiculo`.~~ ✅ (2026-09-16)
+- ~~Campos: descripción, fecha, repetitividad (única, mensual, anual), activa.~~ ✅ enum `Repetitividad` (UNICA/MENSUAL/ANUAL) + `activa`
+- ~~Endpoints CRUD de `/api/alertas`.~~ ✅ anidados bajo `/api/vehiculos/{id}/alertas` (consistente con el resto, ver ADR 007)
+- ~~Servicio sencillo que revisa periódicamente y puede notificar.~~ ✅ `GET .../alertas/vencidas` + `RevisorAlertas` (desactiva únicas, avanza repetitivas); notificación por log de consola (webhook futuro)
+- ~~UI sencilla en frontend para crear/ver alertas.~~ ✅ pestaña "Alertas" en el modal del vehículo
 
 ### Fase 6: Autenticación y multi-tenencia
 - Endpoints `/api/auth/register` y `/api/auth/login` que devuelven JWT.

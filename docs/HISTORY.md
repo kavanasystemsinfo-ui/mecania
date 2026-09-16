@@ -2,6 +2,17 @@
 
 Evolución del proyecto Mecania y decisiones descartadas.
 
+## 2026-09-16 (Fase 5: alertas de mantenimiento)
+
+- **Entidad `Alerta`** con `TipoAlerta` (ITV/ACEITE/FRENOS/CUSTOM) y `Repetitividad` (UNICA/MENSUAL/ANUAL), asociada a `Vehiculo`.
+- **Lógica de vencimiento pura** en `RevisorAlertas`: una alerta única vencida se devuelve y se desactiva; una repetitiva avanza su fecha saltando las ocurrencias pasadas. Testeable sin base de datos (7 tests).
+- **CRUD anidado** bajo `/api/vehiculos/{id}/alertas` (consistente con documentos/manuales/chat), con validación y `AlertaNotFoundException` → 404.
+- **Revisión de vencidas** en `GET .../alertas/vencidas`: ejecuta el revisor, persiste las mutaciones y devuelve las vencidas. Notificación por log de consola (webhook futuro).
+- **UI**: pestaña "Alertas" en el modal del vehículo (formulario, listado con eliminar y botón "Revisar vencidas").
+- **Tests**: la suite pasó de 164 a **183 tests** (162 unitarios + 21 de integración). 7 de `RevisorAlertasTest`, 10 de `AlertaServiceTest` y 2 de `AlertaControllerIT`.
+- **Verificación real**: smoke test (alerta ITV vencida + ACEITE futura → `vencidas` devuelve solo la ITV y la desactiva, la futura queda intacta).
+- **ADR 007**: documenta el anidamiento, la lógica de repetitividad y el porqué de la revisión manual (sin `@Scheduled`).
+
 ## 2026-09-16 (Fase 4: chat RAG por vehículo)
 
 - **Persistencia de embeddings por fin**: hasta ahora el vector se calculaba y se descartaba. Nueva tabla auxiliar `fragmento_embeddings` gestionada por JDBC nativo (`PgVectorRepositorioVectores` + `PGobject` tipo `vector`), porque Hibernate-core no mapea el tipo `vector`. La crea `PgVectorSchemaInitializer` (ApplicationRunner idempotente, solo sobre PostgreSQL) con `CREATE EXTENSION vector` + tabla.
