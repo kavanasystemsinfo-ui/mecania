@@ -16,7 +16,7 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~Extracción de texto de PDF/TXT (PDFBox o Tika).~~ ✅ PDFBox 3 (PDF), POI (DOCX) y lectura directa (TXT) tras la interfaz `TextExtractor`
 - ~~Chunking inteligente (párrafos o secciones).~~ ✅ ventana deslizante 512/64 (`SlidingWindowChunker`)
 - ~~Generación de embeddings mediante modelo local o API (ej. OpenRouter + modelo de embeddings).~~ ✅ `OpenRouterEmbeddingService` (`text-embedding-3-small`), disparado en background
-- Almacenamiento en columna `vector` de PostgreSQL vía pgvector. ⏳ **pendiente**: los fragmentos se persisten con su texto, pero el vector se guardará en la Fase 4 (Hibernate no mapea el tipo `vector`; ver ADR 004)
+- ~~Almacenamiento en columna `vector` de PostgreSQL vía pgvector.~~ ✅ hecho en Fase 4: tabla auxiliar `fragmento_embeddings` por JDBC nativo (Hibernate no mapea `vector`; ver ADR 006)
 - Endpoint interno para generar vectorstore por vehículo. ⏳ **no se hará**: el procesamiento ya se dispara solo al subir el manual; un endpoint manual no aporta nada
 - ~~Tests: verificación de que embeddings se generan y se guardan.~~ ✅ unitarios (embedding, chunking, extractores) + integración con fallo a mitad de documento
 
@@ -27,12 +27,12 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~Tests de la lógica de filtro y descarga (mock del buscador para evitar llamadas externas en CI).~~ ✅ parseo con HTML fijo, buscador contra servidor local, descargador contra servidor local y validación SSRF
 - Búsqueda sobre el HTML público de DuckDuckGo con Jsoup (coste 0, sin credenciales). Si bloquea, se responde 503 explicando que se puede pegar la URL a mano.
 
-### Fase 4: Chat RAG especialista por vehículo
-- Endpoint `POST /api/chat` que recibe mensaje y `vehiculoId`.
-- Recupera fragmentos relevantes de pgvector (similarity search) limitados a ese vehículo.
-- Construye prompt con contexto + mensaje y lo envía a LLM (ej. vía OpenRouter).
-- Devuelve respuesta solo basada en los manuales del vehículo (no mezcla info de otros modelos).
-- Tests de relevancia y de que no se filtra información de otros vehículos.
+### Fase 4: Chat RAG especialista por vehículo ✅
+- ~~Endpoint `POST /api/chat` que recibe mensaje y `vehiculoId`.~~ ✅ `POST /api/vehiculos/{vehiculoId}/chat` (2026-09-16)
+- ~~Recupera fragmentos relevantes de pgvector (similarity search) limitados a ese vehículo.~~ ✅ coseno `<=>` con filtro `vehiculo_id` y umbral de similitud
+- ~~Construye prompt con contexto + mensaje y lo envía a LLM (ej. vía OpenRouter).~~ ✅ `OpenRouterLlmService` (chat/completions, gpt-4o-mini)
+- ~~Devuelve respuesta solo basada en los manuales del vehículo (no mezcla info de otros modelos).~~ ✅ prompt de sistema + "sin base" sin llamar al LLM
+- ~~Tests de relevancia y de que no se filtra información de otros vehículos.~~ ✅ 4 tests de servicio + restricción por `vehiculo_id` en la query (ver ADR 006)
 
 ### Fase 5: Recordatorios y alertas de mantenimiento
 - Entidad `Alerta` (tipo: ITV, aceite, frenos, custom) asociada a `Vehiculo`.

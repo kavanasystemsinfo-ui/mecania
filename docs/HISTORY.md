@@ -2,6 +2,17 @@
 
 Evolución del proyecto Mecania y decisiones descartadas.
 
+## 2026-09-16 (Fase 4: chat RAG por vehículo)
+
+- **Persistencia de embeddings por fin**: hasta ahora el vector se calculaba y se descartaba. Nueva tabla auxiliar `fragmento_embeddings` gestionada por JDBC nativo (`PgVectorRepositorioVectores` + `PGobject` tipo `vector`), porque Hibernate-core no mapea el tipo `vector`. La crea `PgVectorSchemaInitializer` (ApplicationRunner idempotente, solo sobre PostgreSQL) con `CREATE EXTENSION vector` + tabla.
+- **Búsqueda por similitud restringida al vehículo**: coseno con el operador `<=>` de pgvector y `WHERE d.vehiculo_id = ?`. Es estructuralmente imposible cruzar manuales de vehículos distintos.
+- **Chat con honestidad**: `ChatManualesService` vectoriza la pregunta, recupera top-K por encima de un umbral de similitud (0,2 configurable) y, si no hay fragmentos relevantes, responde "sin base" SIN llamar al LLM. `OpenRouterLlmService` (chat/completions, gpt-4o-mini) responde solo con los fragmentos; la API devuelve la respuesta + las fuentes que la sostienen.
+- **Atomicidad**: el vector se guarda en la misma transacción que el fragmento; un fallo del almacén revierte todo.
+- **Endpoint**: `POST /api/vehiculos/{vehiculoId}/chat` con `{"pregunta": "..."}`.
+- **Tests**: la suite pasó de 158 a **164 tests** (145 unitarios + 19 de integración). 4 tests nuevos de `ChatManualesService` + 2 de `DocumentoProcessorIT` (persistencia de un vector por fragmento y rollback por fallo del almacén de vectores).
+- **Verificación real**: smoke test completo contra PostgreSQL y OpenRouter (subir TXT → 5 fragmentos con vector dim 1536 → pregunta sobre el aceite → respuesta "15.000 km o 12 meses" con 4 fuentes y su similitud coseno).
+- **ADR 006**: documenta la elección de JDBC nativo frente a custom Hibernate type o Flyway.
+
 ## 2026-09-16 (Fase 3: búsqueda asistida de manuales)
 
 - **Cambio de diseño respecto al plan inicial**: la Fase 3 se planteó como "Asistente Tavily". Se descarta esa API (y AIsa/Perplexity) por coste: consumen saldo del titular del proyecto y no hay presupuesto de operación en una pieza de portfolio. Sustituida por scraping del HTML público de DuckDuckGo (`html.duckduckgo.com/html/`) con Jsoup, dependencia nueva declarada en `pom.xml`.

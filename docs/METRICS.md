@@ -5,7 +5,7 @@ Qué cubren los tests, no solo cuántos.
 ## Resumen
 
 Suite ejecutada con `mvn verify` (2026-09-16):
-**158 tests en 18 suites — todos verdes** (141 unitarios en `mvn test` + 17 de
+**164 tests en 19 suites — todos verdes** (145 unitarios en `mvn test` + 19 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
@@ -25,6 +25,9 @@ suite, no de contar `@Test` con grep.
 
 ### Capa de servicio de búsqueda asistida (BusquedaManualesServiceTest)
 - **13 tests**: construcción de la consulta (marca, modelo, año, "manual" y consulta libre, ignorando espacios), candidatos devueltos tal cual, vehículo inexistente → error sin llamar al buscador, fallo del buscador propagado sin disfrazar, importación que descarga/guarda/crea documento y publica el evento, normalización por `trim` de la URL pegada, **reimportación que devuelve el existente sin descargar ni publicar evento**, descarga fallida que no crea documento ni escribe archivo, y fallo de escritura envuelto con mensaje explícito.
+
+### Capa de servicio de chat RAG (ChatManualesServiceTest)
+- **4 tests**: respuesta con los fragmentos relevantes devolviendo las fuentes; sin fragmentos por encima del umbral → "sin base" SIN llamar al LLM; descarte de fragmentos por debajo de `mecania.chat.similitud-minima` (el prompt no incluye el irrelevante); propagación del fallo del LLM.
 
 ### Capa de dominio — chunking (SlidingWindowChunkerTest)
 - **11 tests**: null/vacío, texto corto, tamaño exacto, overlap correcto, determinismo, tamaño máximo, validación de constructor (overlap >= chunkSize, negativo, chunkSize <= 0), overlap cero.
@@ -52,17 +55,16 @@ suite, no de contar `@Test` con grep.
 - **18 tests**: guardar/leer/eliminar reales con tempdir, subdirectorio vacío, **3 tests de seguridad** (nombre con `../` se sanitiza y no escapa del baseDir; lectura y borrado con rutas traviesas se rechazan), hardening de nombres especiales (`/`, `.`, `..`, byte NUL) y rutas que colapsan sobre la raíz, más **5 tests de la vía `guardarArchivo(byte[])`** que usa la importación desde internet: escritura real, nombre travieso saneado, nombres especiales, contenido vacío rechazado y subdirectorio que escapa rechazado.
 
 ### Capa de infraestructura — procesamiento (DocumentoProcessorIT)
-- **3 tests de integración**: extrae→chunckea→persiste fragmentos, error sin API key marca documento ERROR sin fragmentos (espera determinista por polling, no Thread.sleep), y el caso clave de **fallo a mitad** (embedding falla en el 2º fragmento → rollback real → CERO fragmentos parciales).
+- **5 tests de integración**: extrae→chunckea→persiste fragmentos, error sin API key marca documento ERROR sin fragmentos (espera determinista por polling, no Thread.sleep), **fallo a mitad** (embedding falla en el 2º fragmento → rollback real → CERO fragmentos), **se guarda un vector por fragmento** (id y embedding correctos) y **fallo del almacén de vectores revierte la transacción** (CERO fragmentos).
 
 ## Qué NO está cubierto actualmente (y por qué)
 
 - **Búsqueda real contra DuckDuckGo en CI**: los tests usan un servidor local con HTML fijo; la verificación contra el servicio real es manual (smoke test), porque depender de un tercero haría el CI no determinista. Tampoco se prueba el caso de que DDG cambie su HTML: se detectaría como "sin resultados", y el camino alternativo (pegar la URL) sigue disponible.
 - **Descarga real desde internet en CI**: cubierta con servidor local; los hosts públicos se validan con tests unitarios del validador.
-- **Capa de persistencia directa**: no hay tests con EntityManager/native query porque la capa de repository abstrae esa interacción; se añadirá en fase 4 con pgvector.
+- **Persistencia y búsqueda pgvector en la suite**: la query SQL real (`<=>`, `PGobject`, `CREATE EXTENSION`) NO se cubre en la suite porque H2 no tiene pgvector. El puerto `RepositorioVectores` se mockea en los tests (lógica del chat y rollback), y el SQL real se verifica con un smoke test contra el PostgreSQL de desarrollo.
 - **Escenarios de concurrencia**: no se testa aún condiciones de carrera bajo carga alta; se asumirá en fases posteriores si el dominio lo requiere.
-- **Integración con pgvector / RAG**: aún no implementado; se añadirá en los tests de esas features.
 - **Endpoints de autenticación**: no existen todavía; se cubrirán cuando se implemente login/registro.
-- **Testcontainers para PostgreSQL**: las dependencias están declaradas pero no se usan todavía (las pruebas actuales son unitarias con mocks o H2; `DocumentoProcessorIT` usa el PostgreSQL del `docker-compose`).
+- **Testcontainers para PostgreSQL**: las dependencias están declaradas pero no se usan todavía; las pruebas actuales son unitarias con mocks o H2.
 
 ## Cómo leer este archivo
 
