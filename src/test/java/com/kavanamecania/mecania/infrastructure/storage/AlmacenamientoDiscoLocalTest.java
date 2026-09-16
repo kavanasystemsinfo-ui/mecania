@@ -141,6 +141,104 @@ class AlmacenamientoDiscoLocalTest {
                 .isInstanceOf(IOException.class);
     }
 
+    // --- Hardening post-revisión OCR (hallazgos 1-4, sesión 2026-09-16) ---
+
+    @Test
+    void guardarArchivo_con_nombre_solo_ruta_no_lanza_NPE() throws IOException {
+        // getFileName() devuelve null para "/" (solo-raíz): debe caer a "unnamed", no NPE.
+        MockMultipartFile file = new MockMultipartFile(
+                "root",
+                "/",
+                "text/plain",
+                "safe".getBytes()
+        );
+
+        String relativePath = storage.guardarArchivo(file, "vehiculos/1/documentos");
+
+        assertThat(relativePath).isEqualTo("vehiculos/1/documentos/unnamed");
+        assertThat(tempDir.resolve(relativePath)).hasContent("safe");
+    }
+
+    @Test
+    void guardarArchivo_con_nombre_punto_cae_a_unnamed_y_no_corrompe_targetDir() throws IOException {
+        // "." colapsaría sobre targetDir y REPLACE_EXISTING lo reemplazaría por un
+        // archivo: debe caer a "unnamed" como los nombres vacíos.
+        MockMultipartFile file = new MockMultipartFile(
+                "dot",
+                ".",
+                "text/plain",
+                "corrupt".getBytes()
+        );
+
+        String relativePath = storage.guardarArchivo(file, "vehiculos/1/documentos");
+
+        assertThat(relativePath).isEqualTo("vehiculos/1/documentos/unnamed");
+        // El subdirectorio sigue siendo un directorio, no un archivo corrupto.
+        assertThat(Files.isDirectory(tempDir.resolve("vehiculos/1/documentos"))).isTrue();
+        assertThat(tempDir.resolve(relativePath)).hasContent("corrupt");
+    }
+
+    @Test
+    void guardarArchivo_con_nombre_punto_punto_cae_a_unnamed_y_no_escapa() throws IOException {
+        // ".." resolvía al padre de targetDir: debe caer a "unnamed", igual que ".".
+        MockMultipartFile file = new MockMultipartFile(
+                "dotdot",
+                "..",
+                "text/plain",
+                "escape".getBytes()
+        );
+
+        String relativePath = storage.guardarArchivo(file, "vehiculos/1/documentos");
+
+        assertThat(relativePath).isEqualTo("vehiculos/1/documentos/unnamed");
+        // El padre (vehiculos/1) sigue intacto como directorio.
+        assertThat(Files.isDirectory(tempDir.resolve("vehiculos/1"))).isTrue();
+    }
+
+    @Test
+    void guardarArchivo_con_nombre_con_nul_byte_se_maneja_como_invalido() throws IOException {
+        // Path.of lanza InvalidPathException con byte NUL: no debe propagarse sin control.
+        MockMultipartFile file = new MockMultipartFile(
+                "nul",
+                "evil\u0000.txt",
+                "text/plain",
+                "data".getBytes()
+        );
+
+        String relativePath = storage.guardarArchivo(file, "docs");
+
+        // Debe caer a "unnamed" en lugar de reventar la petición.
+        assertThat(relativePath).isEqualTo("docs/unnamed");
+    }
+
+    @Test
+    void resolver_rechaza_rutas_que_colapsan_sobre_la_raiz() {
+        // "" y "." resuelven al propio baseDir: eliminarArchivo("") borraría la raíz.
+        assertThatThrownBy(() -> storage.eliminarArchivo(""))
+                .isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> storage.eliminarArchivo("."))
+                .isInstanceOf(IOException.class);
+        assertThatThrownBy(() -> storage.leerArchivo(""))
+                .isInstanceOf(IOException.class);
+        // Y la raíz sigue existiendo.
+        assertThat(Files.isDirectory(tempDir)).isTrue();
+    }
+
+    @Test
+    void guardarArchivo_lee_tras_guardar_un_archivo_punto_punto() throws IOException {
+        // Tras bloquear ".." en guardarArchivo, una RUTA relativa legítima con
+        // subdirectorio debe seguir funcionando (regresión).
+        MockMultipartFile file = new MockMultipartFile(
+                "normal.txt",
+                "normal.txt",
+                "text/plain",
+                "ok".getBytes()
+        );
+
+        String relativePath = storage.guardarArchivo(file, "vehiculos/2/documentos");
+        assertThat(storage.leerArchivo(relativePath)).isEqualTo("ok".getBytes());
+    }
+
     // Note: Testing IOException on write failure is complex without mocking low-level IO.
     // We rely on the fact that Java throws IOException on failure; covered by other tests indirectly.
 }

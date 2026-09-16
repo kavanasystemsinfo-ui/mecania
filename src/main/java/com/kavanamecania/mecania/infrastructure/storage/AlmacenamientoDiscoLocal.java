@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
@@ -43,7 +44,12 @@ public class AlmacenamientoDiscoLocal implements AlmacenamientoArchivos {
 
         // Sanitizamos el subdirectorio y resolvemos contra baseDir, comprobando
         // que no escape (defensa en profundidad: el caller usa ids numéricos).
-        Path targetDir = resolver(subdirectorio);
+        // A diferencia de resolver(), aquí el propio baseDir es válido como
+        // destino (subdirectorio vacío = guardar en la raíz).
+        Path targetDir = baseDir.resolve(subdirectorio).normalize();
+        if (!targetDir.startsWith(baseDir)) {
+            throw new IOException("Path traversal detectado en subdirectorio: " + subdirectorio);
+        }
         Files.createDirectories(targetDir);
 
         // Nunca usar el nombre original tal cual: extrae solo el nombre base y
@@ -52,11 +58,13 @@ public class AlmacenamientoDiscoLocal implements AlmacenamientoArchivos {
         if (originalFilename == null || originalFilename.isBlank()) {
             originalFilename = "unnamed";
         }
-        String safeName = Path.of(originalFilename).getFileName().toString();
+        String safeName = extraerNombreSeguro(originalFilename);
 
+        // "." y ".." colapsan sobre targetDir o su padre: el nombre debe aportar
+        // exactamente un elemento real debajo de targetDir.
         Path targetFile = targetDir.resolve(safeName).normalize();
-        if (!targetFile.startsWith(baseDir)) {
-            throw new IOException("Path traversal detectado en nombre de archivo: " + originalFilename);
+        if (!targetDir.equals(targetFile.getParent()) || !targetFile.startsWith(baseDir)) {
+            throw new IOException("Nombre de archivo inválido o path traversal: " + originalFilename);
         }
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -89,12 +97,36 @@ public class AlmacenamientoDiscoLocal implements AlmacenamientoArchivos {
     /**
      * Resuelve una ruta relativa contra el baseDir garantizando que el resultado
      * no escape de él (protección contra path traversal con {@code ..}).
+     *
+     * <p>La comprobación es léxica ({@code normalize()} + {@code startsWith()}):
+     * no detecta symlinks plantados dentro del {@code baseDir}. Las rutas siempre
+     * provienen del propio {@link #guardarArchivo}, nunca del usuario externo.</p>
      */
     private Path resolver(String rutaRelativa) throws IOException {
         Path resolved = baseDir.resolve(rutaRelativa).normalize();
-        if (!resolved.startsWith(baseDir)) {
-            throw new IOException("Path traversal detectado en ruta: " + rutaRelativa);
+        // "" y "." colapsan sobre el propio baseDir: la raíz nunca es un objetivo válido.
+        if (resolved.equals(baseDir) || !resolved.startsWith(baseDir)) {
+            throw new IOException("Ruta inválida o path traversal detectado: " + rutaRelativa);
         }
         return resolved;
+    }
+
+    /**
+     * Extrae el nombre base de un nombre de archivo multipart, devolviendo
+     * {@code "unnamed"} para cualquier entrada que no aporte un elemento real:
+     * solo-raíz ({@code "/"}), nombres especiales ({@code "."} / {@code ".."})
+     * o rutas con caracteres ilegales (byte NUL).
+     */
+    private String extraerNombreSeguro(String originalFilename) {
+        Path namePath;
+        try {
+            namePath = Path.of(originalFilename).getFileName();
+        } catch (InvalidPathException e) {
+            return "unnamed";
+        }
+        if (namePath == null || namePath.toString().equals(".") || namePath.toString().equals("..")) {
+            return "unnamed";
+        }
+        return namePath.toString();
     }
 }
