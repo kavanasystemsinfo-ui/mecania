@@ -399,7 +399,11 @@ async function downloadDocument(documentoId) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = filename || 'documento';
+        // El nombre viaja en el Content-Disposition del backend; se extrae de ahí
+        // para no depender de un parámetro que no se pasaba (bug "filename is not defined").
+        const disposition = resp.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+        a.download = (match ? match[1] : `documento-${documentoId}`).replace(/["']/g, '');
         document.body.appendChild(a);
         a.click();
         a.remove();
