@@ -10,6 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Operaciones sobre vehículos, siempre acotadas al usuario dueño
+ * (multi-tenencia: un usuario nunca toca vehículos ajenos).
+ */
 @Service
 public class VehiculoService {
 
@@ -20,30 +24,25 @@ public class VehiculoService {
     }
 
     @Transactional(readOnly = true)
-    public List<Vehiculo> findAll() {
-        return repository.findAll();
-    }
-
-    @Transactional(readOnly = true)
     public List<Vehiculo> findByUsuarioId(Long usuarioId) {
         return repository.findByUsuarioId(usuarioId);
     }
 
     @Transactional(readOnly = true)
-    public Vehiculo findById(Long id) {
-        return repository.findById(id)
+    public Vehiculo findById(Long id, Long usuarioId) {
+        return repository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new VehiculoNotFoundException(id));
     }
 
     @Transactional
-    public Vehiculo create(VehiculoRequest req) {
+    public Vehiculo create(VehiculoRequest req, Long usuarioId) {
         if (repository.existsByUsuarioIdAndMarcaAndModeloAndAnio(
-                req.usuarioId(), req.marca(), req.modelo(), req.anio())) {
+                usuarioId, req.marca(), req.modelo(), req.anio())) {
             throw new VehiculoDuplicadoException(
-                    req.usuarioId(), req.marca(), req.modelo(), req.anio());
+                    usuarioId, req.marca(), req.modelo(), req.anio());
         }
         Vehiculo v = Vehiculo.builder()
-                .usuarioId(req.usuarioId())
+                .usuarioId(usuarioId)
                 .marca(req.marca())
                 .modelo(req.modelo())
                 .anio(req.anio())
@@ -55,8 +54,8 @@ public class VehiculoService {
     }
 
     @Transactional
-    public Vehiculo update(Long id, VehiculoRequest req) {
-        Vehiculo v = findById(id);
+    public Vehiculo update(Long id, VehiculoRequest req, Long usuarioId) {
+        Vehiculo v = findById(id, usuarioId);
         v.setMarca(req.marca());
         v.setModelo(req.modelo());
         v.setAnio(req.anio());
@@ -67,8 +66,8 @@ public class VehiculoService {
     }
 
     @Transactional
-    public void delete(Long id) {
-        if (!repository.existsById(id)) {
+    public void delete(Long id, Long usuarioId) {
+        if (!repository.existsByIdAndUsuarioId(id, usuarioId)) {
             throw new VehiculoNotFoundException(id);
         }
         repository.deleteById(id);

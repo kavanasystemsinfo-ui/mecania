@@ -13,7 +13,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -32,9 +31,9 @@ class VehiculoControllerIT {
     void flujo_completo_post_get_put_delete() throws Exception {
         MockMvc mvc = mvc();
 
-        // POST
+        // POST (el propietario lo asigna el token; en test auth deshabilitada es el usuario demo 1)
         String body = om.writeValueAsString(new VehiculoRequest(
-                1L, "Ford", "Focus", 2017, Combustible.DIESEL, 120000L, "5555XXX"));
+                "Ford", "Focus", 2017, Combustible.DIESEL, 120000L, "5555XXX"));
         MvcResult postResult = mvc.perform(post("/api/vehiculos")
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
@@ -51,7 +50,7 @@ class VehiculoControllerIT {
 
         // PUT
         String updated = om.writeValueAsString(new VehiculoRequest(
-                1L, "Ford", "Focus", 2018, Combustible.DIESEL, 130000L, "5555XXX"));
+                "Ford", "Focus", 2018, Combustible.DIESEL, 130000L, "5555XXX"));
         mvc.perform(put("/api/vehiculos/" + id)
                         .contentType(MediaType.APPLICATION_JSON).content(updated))
                 .andExpect(status().isOk())
@@ -71,7 +70,7 @@ class VehiculoControllerIT {
     void post_duplicado_devuelve_409() throws Exception {
         MockMvc mvc = mvc();
         String body = om.writeValueAsString(new VehiculoRequest(
-                9L, "Peugeot", "308", 2019, Combustible.GASOLINA, 50000L, null));
+                "Peugeot", "308", 2019, Combustible.GASOLINA, 50000L, null));
 
         mvc.perform(post("/api/vehiculos")
                         .contentType(MediaType.APPLICATION_JSON).content(body))
@@ -84,21 +83,17 @@ class VehiculoControllerIT {
     }
 
     @Test
-    void list_con_filtro_usuarioId_devuelve_solo_sus_vehiculos() throws Exception {
+    void list_devuelve_solo_los_del_usuario_autenticado() throws Exception {
         MockMvc mvc = mvc();
 
         mvc.perform(post("/api/vehiculos")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(om.writeValueAsString(new VehiculoRequest(
-                        50L, "Audi", "A3", 2020, Combustible.GASOLINA, 30000L, null))));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(new VehiculoRequest(
+                                "Audi", "A3", 2020, Combustible.GASOLINA, 30000L, null))))
+                .andExpect(status().isCreated());
 
-        mvc.perform(post("/api/vehiculos")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(om.writeValueAsString(new VehiculoRequest(
-                        51L, "BMW", "Serie1", 2021, Combustible.DIESEL, 20000L, null))));
-
-        mvc.perform(get("/api/vehiculos").param("usuarioId", "50"))
+        mvc.perform(get("/api/vehiculos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.usuarioId==50)]").exists());
+                .andExpect(jsonPath("$[0].usuarioId").value(1));
     }
 }

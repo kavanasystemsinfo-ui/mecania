@@ -5,6 +5,7 @@ import com.kavanamecania.mecania.application.dto.AlertaRequest;
 import com.kavanamecania.mecania.application.dto.AlertaResponse;
 import com.kavanamecania.mecania.domain.model.Alerta;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
+import com.kavanamecania.mecania.security.SecurityUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
@@ -32,7 +33,7 @@ public class AlertaController {
 
     @GetMapping
     public ResponseEntity<List<AlertaResponse>> listar(@NotNull @PathVariable Long vehiculoId) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
         List<AlertaResponse> alertas = alertaService.listar(vehiculoId).stream()
@@ -45,7 +46,7 @@ public class AlertaController {
     public ResponseEntity<AlertaResponse> crear(
             @NotNull @PathVariable Long vehiculoId,
             @Valid @RequestBody AlertaRequest request) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
         Alerta creada = alertaService.crear(vehiculoId, request);
@@ -57,7 +58,7 @@ public class AlertaController {
             @NotNull @PathVariable Long vehiculoId,
             @NotNull @PathVariable Long alertaId,
             @Valid @RequestBody AlertaRequest request) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
         Alerta actualizada = alertaService.actualizar(vehiculoId, alertaId, request);
@@ -68,7 +69,7 @@ public class AlertaController {
     public ResponseEntity<Void> eliminar(
             @NotNull @PathVariable Long vehiculoId,
             @NotNull @PathVariable Long alertaId) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
         alertaService.eliminar(vehiculoId, alertaId);
@@ -77,7 +78,7 @@ public class AlertaController {
 
     @GetMapping("/vencidas")
     public ResponseEntity<List<AlertaResponse>> vencidas(@NotNull @PathVariable Long vehiculoId) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
         List<AlertaResponse> vencidas = alertaService.vencidas(vehiculoId).stream()

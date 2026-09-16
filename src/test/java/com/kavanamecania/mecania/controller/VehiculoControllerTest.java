@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -35,7 +37,7 @@ class VehiculoControllerTest {
 
     @Test
     void post_crea_vehiculo_y_devuelve_201_con_location() throws Exception {
-        when(service.create(any(VehiculoRequest.class))).thenAnswer(inv -> {
+        when(service.create(any(VehiculoRequest.class), anyLong())).thenAnswer(inv -> {
             Vehiculo v = Vehiculo.builder()
                     .id(7L).usuarioId(1L)
                     .marca("Renault").modelo("Clio").anio(2020)
@@ -45,7 +47,7 @@ class VehiculoControllerTest {
         });
 
         String body = om.writeValueAsString(new VehiculoRequest(
-                1L, "Renault", "Clio", 2020, Combustible.GASOLINA, 15000L, "9999ZZZ"));
+                "Renault", "Clio", 2020, Combustible.GASOLINA, 15000L, "9999ZZZ"));
 
         mvc.perform(post("/api/vehiculos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -59,7 +61,7 @@ class VehiculoControllerTest {
     @Test
     void post_validacion_falla_devuelve_400_con_fields() throws Exception {
         String body = """
-                {"usuarioId":null,"marca":"","modelo":"","anio":1500,"combustible":null}
+                {"marca":"","modelo":"","anio":1500,"combustible":null}
                 """;
 
         mvc.perform(post("/api/vehiculos")
@@ -72,7 +74,7 @@ class VehiculoControllerTest {
 
     @Test
     void get_por_id_existente_devuelve_200() throws Exception {
-        when(service.findById(5L)).thenReturn(Vehiculo.builder()
+        when(service.findById(eq(5L), anyLong())).thenReturn(Vehiculo.builder()
                 .id(5L).usuarioId(2L).marca("Seat").modelo("Ibiza").anio(2019)
                 .combustible(Combustible.DIESEL).build());
 
@@ -84,7 +86,7 @@ class VehiculoControllerTest {
 
     @Test
     void get_por_id_inexistente_devuelve_404() throws Exception {
-        when(service.findById(404L))
+        when(service.findById(eq(404L), anyLong()))
                 .thenThrow(new com.kavanamecania.mecania.domain.exception.VehiculoNotFoundException(404L));
 
         mvc.perform(get("/api/vehiculos/404"))
@@ -93,12 +95,12 @@ class VehiculoControllerTest {
     }
 
     @Test
-    void get_lista_filtrada_por_usuarioId() throws Exception {
+    void get_lista_devuelve_solo_los_del_usuario() throws Exception {
         when(service.findByUsuarioId(1L)).thenReturn(List.of(
                 Vehiculo.builder().id(1L).usuarioId(1L).marca("A").modelo("B").anio(2020)
                         .combustible(Combustible.GASOLINA).build()));
 
-        mvc.perform(get("/api/vehiculos").param("usuarioId", "1"))
+        mvc.perform(get("/api/vehiculos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].usuarioId").value(1));
     }

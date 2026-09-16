@@ -7,6 +7,7 @@ import com.kavanamecania.mecania.domain.chat.LlmException;
 import com.kavanamecania.mecania.domain.embedding.EmbeddingException;
 import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
+import com.kavanamecania.mecania.security.SecurityUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +41,7 @@ public class ChatManualesController {
             @NotNull @PathVariable Long vehiculoId,
             @Valid @RequestBody PreguntaRequest request)
             throws EmbeddingException, VectorPersistenceException, LlmException {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(chatManualesService.responder(vehiculoId, request.pregunta()));

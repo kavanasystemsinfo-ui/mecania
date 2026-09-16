@@ -32,9 +32,9 @@ class AlertaControllerIT {
         return MockMvcBuilders.webAppContextSetup(context).build();
     }
 
-    private Long crearVehiculo(MockMvc mvc, Long usuarioId, String marca) throws Exception {
+    private Long crearVehiculo(MockMvc mvc, String marca) throws Exception {
         String body = om.writeValueAsString(new VehiculoRequest(
-                usuarioId, marca, "Modelo", 2020, Combustible.GASOLINA, 10000L, null));
+                marca, "Modelo", 2020, Combustible.GASOLINA, 10000L, null));
         MvcResult r = mvc.perform(post("/api/vehiculos")
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated())
@@ -50,7 +50,7 @@ class AlertaControllerIT {
     @Test
     void crear_listar_actualizar_y_eliminar() throws Exception {
         MockMvc mvc = mvc();
-        Long vid = crearVehiculo(mvc, 700L, "Seat");
+        Long vid = crearVehiculo(mvc, "Seat");
 
         // crear
         MvcResult crear = mvc.perform(post("/api/vehiculos/" + vid + "/alertas")
@@ -91,7 +91,7 @@ class AlertaControllerIT {
     @Test
     void vencidas_conAlertaVencida_devuelveYDesactiva() throws Exception {
         MockMvc mvc = mvc();
-        Long vid = crearVehiculo(mvc, 701L, "Renault");
+        Long vid = crearVehiculo(mvc, "Renault");
 
         // crear alerta UNICA vencida (ayer)
         MvcResult crear = mvc.perform(post("/api/vehiculos/" + vid + "/alertas")

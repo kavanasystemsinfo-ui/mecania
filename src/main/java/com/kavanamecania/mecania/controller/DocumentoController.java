@@ -5,6 +5,7 @@ import com.kavanamecania.mecania.application.dto.DocumentoResponse;
 import com.kavanamecania.mecania.domain.model.Documento;
 import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
+import com.kavanamecania.mecania.security.SecurityUtils;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -36,7 +37,7 @@ public class DocumentoController {
             @NotNull @PathVariable Long vehiculoId,
             @RequestParam("file") MultipartFile file) {
         // Validate vehicle exists
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
 
@@ -48,7 +49,7 @@ public class DocumentoController {
     @GetMapping
     public ResponseEntity<List<DocumentoResponse>> listDocumentos(
             @NotNull @PathVariable Long vehiculoId) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
 

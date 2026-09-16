@@ -24,6 +24,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class VehiculoServiceTest {
 
+    private static final Long USUARIO = 1L;
+
     @Mock VehiculoRepository repository;
     @InjectMocks VehiculoService service;
 
@@ -31,18 +33,18 @@ class VehiculoServiceTest {
 
     @BeforeEach
     void setUp() {
-        req = new VehiculoRequest(1L, "Toyota", "Corolla", 2018,
+        req = new VehiculoRequest("Toyota", "Corolla", 2018,
                 Combustible.GASOLINA, 80000L, "1234ABC");
     }
 
     @Test
     void findById_existente_devuelve_vehiculo() {
-        Vehiculo v = Vehiculo.builder().id(10L).usuarioId(1L)
+        Vehiculo v = Vehiculo.builder().id(10L).usuarioId(USUARIO)
                 .marca("Toyota").modelo("Corolla").anio(2018)
                 .combustible(Combustible.GASOLINA).build();
-        when(repository.findById(10L)).thenReturn(Optional.of(v));
+        when(repository.findByIdAndUsuarioId(10L, USUARIO)).thenReturn(Optional.of(v));
 
-        Vehiculo result = service.findById(10L);
+        Vehiculo result = service.findById(10L, USUARIO);
 
         assertThat(result.getId()).isEqualTo(10L);
         assertThat(result.getMarca()).isEqualTo("Toyota");
@@ -50,9 +52,9 @@ class VehiculoServiceTest {
 
     @Test
     void findById_inexistente_lanza_VehiculoNotFoundException() {
-        when(repository.findById(99L)).thenReturn(Optional.empty());
+        when(repository.findByIdAndUsuarioId(99L, USUARIO)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findById(99L))
+        assertThatThrownBy(() -> service.findById(99L, USUARIO))
                 .isInstanceOf(VehiculoNotFoundException.class)
                 .hasMessageContaining("99");
     }
@@ -60,9 +62,9 @@ class VehiculoServiceTest {
     @Test
     void create_duplicado_lanza_VehiculoDuplicadoException() {
         when(repository.existsByUsuarioIdAndMarcaAndModeloAndAnio(
-                1L, "Toyota", "Corolla", 2018)).thenReturn(true);
+                USUARIO, "Toyota", "Corolla", 2018)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.create(req))
+        assertThatThrownBy(() -> service.create(req, USUARIO))
                 .isInstanceOf(VehiculoDuplicadoException.class);
 
         verify(repository, never()).save(any());
@@ -71,14 +73,14 @@ class VehiculoServiceTest {
     @Test
     void create_valido_persiste_y_devuelve_vehiculo() {
         when(repository.existsByUsuarioIdAndMarcaAndModeloAndAnio(
-                1L, "Toyota", "Corolla", 2018)).thenReturn(false);
+                USUARIO, "Toyota", "Corolla", 2018)).thenReturn(false);
         when(repository.save(any(Vehiculo.class))).thenAnswer(inv -> {
             Vehiculo arg = inv.getArgument(0);
             arg.setId(42L);
             return arg;
         });
 
-        Vehiculo result = service.create(req);
+        Vehiculo result = service.create(req, USUARIO);
 
         assertThat(result.getId()).isEqualTo(42L);
         assertThat(result.getMarca()).isEqualTo("Toyota");
@@ -87,30 +89,30 @@ class VehiculoServiceTest {
 
     @Test
     void delete_existente_elimina() {
-        when(repository.existsById(10L)).thenReturn(true);
+        when(repository.existsByIdAndUsuarioId(10L, USUARIO)).thenReturn(true);
 
-        service.delete(10L);
+        service.delete(10L, USUARIO);
 
         verify(repository).deleteById(10L);
     }
 
     @Test
     void delete_inexistente_lanza_excepcion() {
-        when(repository.existsById(99L)).thenReturn(false);
+        when(repository.existsByIdAndUsuarioId(99L, USUARIO)).thenReturn(false);
 
-        assertThatThrownBy(() -> service.delete(99L))
+        assertThatThrownBy(() -> service.delete(99L, USUARIO))
                 .isInstanceOf(VehiculoNotFoundException.class);
         verify(repository, never()).deleteById(any());
     }
 
     @Test
     void findByUsuarioId_devuelve_lista() {
-        when(repository.findByUsuarioId(1L)).thenReturn(List.of(
-                Vehiculo.builder().id(1L).usuarioId(1L)
+        when(repository.findByUsuarioId(USUARIO)).thenReturn(List.of(
+                Vehiculo.builder().id(1L).usuarioId(USUARIO)
                         .marca("A").modelo("B").anio(2020)
                         .combustible(Combustible.DIESEL).build()));
 
-        List<Vehiculo> result = service.findByUsuarioId(1L);
+        List<Vehiculo> result = service.findByUsuarioId(USUARIO);
 
         assertThat(result).hasSize(1);
     }

@@ -6,6 +6,7 @@ import com.kavanamecania.mecania.application.dto.CandidatoManualResponse;
 import com.kavanamecania.mecania.application.dto.ImportacionResponse;
 import com.kavanamecania.mecania.application.dto.ImportarManualRequest;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
+import com.kavanamecania.mecania.security.SecurityUtils;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
@@ -39,7 +40,7 @@ public class BusquedaManualesController {
     public ResponseEntity<List<CandidatoManualResponse>> buscarCandidatos(
             @NotNull @PathVariable Long vehiculoId,
             @RequestParam(value = "q", required = false) String consulta) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
 
@@ -53,7 +54,7 @@ public class BusquedaManualesController {
     public ResponseEntity<ImportacionResponse> importarManual(
             @NotNull @PathVariable Long vehiculoId,
             @Valid @RequestBody ImportarManualRequest request) {
-        if (!vehiculoRepository.existsById(vehiculoId)) {
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
             return ResponseEntity.notFound().build();
         }
 
