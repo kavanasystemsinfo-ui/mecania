@@ -4,8 +4,8 @@ Qué cubren los tests, no solo cuántos.
 
 ## Resumen
 
-Suite ejecutada con `mvn verify` (2026-09-16):
-**203 tests en 27 suites — todos verdes** (173 unitarios en `mvn test` + 30 de
+Suite ejecutada con `mvn verify` (2026-09-17):
+**211 tests en 30 suites — todos verdes** (178 unitarios en `mvn test` + 33 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
@@ -19,12 +19,16 @@ suite, no de contar `@Test` con grep.
 - **AuthControllerIT (6)**: contrato HTTP de autenticación con la seguridad REAL activa (perfil `test-auth`): registro 201 con token, registro duplicado 409, login 200 con token, login con contraseña incorrecta 401, endpoint protegido sin token 401 y con token 200.
 - **MultiTenenciaIT (2)**: un usuario autenticado no ve (404) ni puede borrar (404) vehículos ajenos, y el listado de un usuario sin vehículos propios está vacío.
 - **HealthControllerIT (1)**: `/health` devuelve 200 `UP` sin autenticación (hace `SELECT 1` contra H2).
+- **HealthReadyIT (3)**: `/health/ready` devuelve 200 `UP` con las tres comprobaciones en verde (base de datos, clave de embeddings y almacenamiento escribible) y 503 `DOWN` en cuanto falla la clave de embeddings o el almacenamiento: el servicio no puede declararse listo con la IA muerta.
+
+### Contrato de errores (GlobalExceptionHandlerTest)
+- **4 tests**: archivo demasiado grande → **413** con código propio `archivo_demasiado_grande`; subida cortada por el límite del servidor de aplicaciones → **413** con el límite en MB y sin el nombre de la clase de la excepción; ruta inexistente → **404** `recurso_no_encontrado` (antes 500); error no previsto → **500** `error_interno` con mensaje genérico, sin filtrar el nombre de la clase ni el mensaje interno.
 
 ### Capa de servicio (VehiculoServiceTest)
 - **7 tests**: lógica de servicio sin layer HTTP acotada al usuario (findByUsuarioId, findById con/sin existencia, create con duplicado y éxito, update, delete).
 
 ### Capa de servicio de documentos (DocumentoServiceTest)
-- **8 tests**: subida (PDF válido, TXT válido, extensión no soportada, archivo demasiado grande, vehículo inexistente), listado, pertenencia del documento al vehículo.
+- **9 tests**: subida (PDF válido, TXT válido, extensión no soportada, vehículo inexistente, **un byte por encima del límite → `ArchivoDemasiadoGrandeException` y exactamente en el límite → aceptado**), listado, pertenencia del documento al vehículo. El límite no está en el código: sale de `mecania.upload.max-bytes`, así que los tests de frontera construyen el servicio con un límite pequeño y no reservan 25 MB de heap.
 - **Clave**: los tests de subida verifican que se publica el evento `DocumentoSubidoEvent` con el id correcto (el procesamiento async NO se llama directo — se dispara por listener AFTER_COMMIT, ver ADR 004).
 
 ### Capa de servicio de búsqueda asistida (BusquedaManualesServiceTest)

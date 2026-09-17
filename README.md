@@ -5,7 +5,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![pgvector](https://img.shields.io/badge/pgvector-enabled-orange)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-lightgrey)
-![Tests](https://img.shields.io/badge/tests-203-brightgreen)
+![Tests](https://img.shields.io/badge/tests-211-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 🎯 Qué es Mecania y por qué existe (como pieza de portafolio)
@@ -138,7 +138,7 @@ La aplicación estará disponible en `http://localhost:8080`.
 
 #### Documentos por vehículo (subida de manuales)
 
-- **Subir manual** (PDF, TXT o DOCX, máximo 10 MB)
+- **Subir manual** (PDF, TXT o DOCX, máximo 25 MB)
   ```bash
   curl -X POST http://localhost:8080/api/vehiculos/1/documentos \
     -F "file=@/ruta/al/manual.pdf"
@@ -165,7 +165,7 @@ Es una función de **búsqueda asistida**: el sistema propone candidatos y solo 
   curl "http://localhost:8080/api/vehiculos/1/manuales/candidatos?q=cambio%20de%20aceite"
   ```
 
-- **Importar una URL aceptada** (PDF, TXT o DOCX, máximo 10 MB)
+- **Importar una URL aceptada** (PDF, TXT o DOCX, máximo 10 MB: esta vía es la que descarga desde internet, así que mantiene un tope más bajo a propósito, ver [ADR 005](docs/adr/005-busqueda-asistida-manuales.md))
   ```bash
   curl -X POST http://localhost:8080/api/vehiculos/1/manuales/importar \
     -H "Content-Type: application/json" \

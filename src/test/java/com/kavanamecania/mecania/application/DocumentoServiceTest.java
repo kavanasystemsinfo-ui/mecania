@@ -1,6 +1,7 @@
 package com.kavanamecania.mecania.application;
 
 import com.kavanamecania.mecania.application.evento.DocumentoSubidoEvent;
+import com.kavanamecania.mecania.domain.exception.ArchivoDemasiadoGrandeException;
 import com.kavanamecania.mecania.domain.model.Documento;
 import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
@@ -47,7 +48,6 @@ class DocumentoServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    @InjectMocks
     private DocumentoService documentoService;
 
     private Vehiculo vehiculo;
@@ -87,14 +87,26 @@ class DocumentoServiceTest {
                 "fake image".getBytes()
         );
 
-        // Create a file larger than 10 MB
-        byte[] largeContent = new byte[11 * 1024 * 1024]; // 11 MB
+        // Fichero de 2 KB que supera el límite REDUCIDO con el que se construye el
+        // servicio en los tests de límite (no se reservan 25 MB de heap por test).
         tooLarge = new MockMultipartFile(
-                "large.pdf",
-                "large.pdf",
+                "grande.pdf",
+                "grande.pdf",
                 "application/pdf",
-                largeContent
+                new byte[2048]
         );
+
+        documentoService = new DocumentoService(
+                documentoRepository, vehiculoRepository, almacenamientoArchivos, eventPublisher,
+                LIMITE_25_MB);
+    }
+
+    /** Límite de subida de producción: 25 MB. */
+    private static final long LIMITE_25_MB = 25L * 1024 * 1024;
+
+    private DocumentoService servicioConLimite(long limiteBytes) {
+        return new DocumentoService(documentoRepository, vehiculoRepository,
+                almacenamientoArchivos, eventPublisher, limiteBytes);
     }
 
     @Test
@@ -198,13 +210,28 @@ class DocumentoServiceTest {
         when(vehiculoRepository.findById(1L)).thenReturn(java.util.Optional.of(vehiculo));
 
         // When/Then
-        assertThatThrownBy(() -> documentoService.subirDocumento(1L, tooLarge))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Archivo demasiado grande");
+        assertThatThrownBy(() -> servicioConLimite(1024).subirDocumento(1L, tooLarge))
+                .isInstanceOf(ArchivoDemasiadoGrandeException.class)
+                .hasMessageContaining("demasiado grande");
 
         verify(vehiculoRepository).findById(1L);
         verifyNoInteractions(almacenamientoArchivos);
         verifyNoInteractions(documentoRepository);
+    }
+
+    @Test
+    void subirDocumento_enElLimiteExacto_seAcepta() throws IOException {
+        // Given: el fichero pesa exactamente lo que admite el servicio
+        when(vehiculoRepository.findById(1L)).thenReturn(Optional.of(vehiculo));
+        doReturn("vehiculos/1/documentos/manual.txt")
+                .when(almacenamientoArchivos).guardarArchivo(validTxt, "vehiculos/1/documentos");
+        when(documentoRepository.save(any(Documento.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        // When
+        Documento resultado = servicioConLimite(validTxt.getSize()).subirDocumento(1L, validTxt);
+
+        // Then
+        assertThat(resultado.getNombre()).isEqualTo("manual.txt");
     }
 
     @Test

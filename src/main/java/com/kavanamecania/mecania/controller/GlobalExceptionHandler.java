@@ -5,18 +5,24 @@ import com.kavanamecania.mecania.domain.chat.LlmException;
 import com.kavanamecania.mecania.domain.descarga.DescargaException;
 import com.kavanamecania.mecania.domain.descarga.MotivoDescarga;
 import com.kavanamecania.mecania.domain.embedding.EmbeddingException;
+import com.kavanamecania.mecania.domain.exception.ArchivoDemasiadoGrandeException;
 import com.kavanamecania.mecania.domain.exception.AlertaNotFoundException;
 import com.kavanamecania.mecania.domain.exception.CredencialesInvalidasException;
 import com.kavanamecania.mecania.domain.exception.UsuarioYaExisteException;
 import com.kavanamecania.mecania.domain.exception.VehiculoDuplicadoException;
 import com.kavanamecania.mecania.domain.exception.VehiculoNotFoundException;
 import com.kavanamecania.mecania.domain.vector.VectorPersistenceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -25,6 +31,14 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final long maxUploadBytes;
+
+    public GlobalExceptionHandler(@Value("${mecania.upload.max-bytes:26214400}") long maxUploadBytes) {
+        this.maxUploadBytes = maxUploadBytes;
+    }
 
     @ExceptionHandler(VehiculoNotFoundException.class)
     public ResponseEntity<Map<String, Object>> notFound(VehiculoNotFoundException ex) {
@@ -119,10 +133,40 @@ public class GlobalExceptionHandler {
                 "Restricción de integridad violada", null);
     }
 
+    /** El fichero subido supera el límite configurado: 413 con el límite en el mensaje. */
+    @ExceptionHandler(ArchivoDemasiadoGrandeException.class)
+    public ResponseEntity<Map<String, Object>> archivoDemasiadoGrande(ArchivoDemasiadoGrandeException ex) {
+        return body(HttpStatus.PAYLOAD_TOO_LARGE, "archivo_demasiado_grande", ex.getMessage(), null);
+    }
+
+    /**
+     * Spring corta la subida antes de llegar al controlador (límite del
+     * servidor de aplicaciones). Se traduce al MISMO contrato que el límite del
+     * servicio: 413 y un mensaje que dice cuál es el máximo, no un 500 genérico.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> subidaExcedeElLimite(MaxUploadSizeExceededException ex) {
+        log.warn("Subida rechazada por el límite del servidor: {}", ex.getMessage());
+        int limiteMb = (int) (maxUploadBytes / (1024 * 1024));
+        return body(HttpStatus.PAYLOAD_TOO_LARGE, "archivo_demasiado_grande",
+                "El archivo supera el límite de " + limiteMb + " MB", null);
+    }
+
+    /** Ruta que no existe: 404, nunca 500. */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> recursoNoEncontrado(NoResourceFoundException ex) {
+        return body(HttpStatus.NOT_FOUND, "recurso_no_encontrado", "La ruta solicitada no existe", null);
+    }
+
+    /**
+     * Cualquier error no previsto: 500 con mensaje genérico. El detalle va al
+     * log del servidor, nunca al cliente: exponer el nombre de la clase y su
+     * mensaje filtra la estructura interna de la aplicación.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> general(Exception ex) {
-        return body(HttpStatus.INTERNAL_SERVER_ERROR, "error_interno",
-                ex.getClass().getSimpleName() + ": " + ex.getMessage(), null);
+        log.error("Error no controlado en la API", ex);
+        return body(HttpStatus.INTERNAL_SERVER_ERROR, "error_interno", "Error interno del servidor", null);
     }
 
     private static ResponseEntity<Map<String, Object>> body(

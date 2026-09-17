@@ -51,7 +51,7 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 
 ### Fase 7: Despliegue y monitoreo
 - ~~Pipeline GitHub Actions que ejecuta `mvn verify`.~~ ✅ `.github/workflows/ci.yml` (verde en cada push a main y en PRs)
-- ~~Health checks endpoints.~~ ✅ `/health` (200 UP / 503 DOWN, hace `SELECT 1` contra la BD, sin auth)
+- ~~Health checks endpoints.~~ ✅ `/health` (200 UP / 503 DOWN, hace `SELECT 1` contra la BD, sin auth) y `/health/ready` (200/503 comprobando BD + clave de embeddings + almacenamiento escribible)
 - ~~Logging estructurado y rotación de logs.~~ ✅ `logback-spring.xml` (consola + archivo, 10 MB / 7 días / tope 100 MB)
 - ~~Documentación de pasos para desplegar en producción.~~ ✅ `docs/DEPLOY.md` + `Dockerfile` + `render.yaml`
 - Desplegar a un servicio managed (Render + Neon): ⏳ pendiente, requiere las cuentas del titular (se guía un paso por vez).

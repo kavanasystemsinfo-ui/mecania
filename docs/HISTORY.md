@@ -2,6 +2,16 @@
 
 Evolución del proyecto Mecania y decisiones descartadas.
 
+## 2026-09-17 (Auditoría de Fase 0 y primer endurecimiento)
+
+- **Auditoría real del repo** contra código y producción: 5 afirmaciones de la documentación que el código desmiente y 10 huecos para producción. Informe en `auditoria-mecania/2026-09-17-fase0-auditoria-real.md`.
+- **Producción real**: Render (Docker, Frankfurt, plan gratuito) + Neon (PostgreSQL 16 con pgvector) + `mecania.kavanasystems.com` con HTTPS. Verificado end-to-end: registro → vehículo → subida de manual → `LISTO` con embeddings → chat RAG citando el fragmento correcto. Arranque persistente en el VPS por systemd (`mecania.service`): la caída del 8080 era un proceso en primer plano que moría al cerrar la sesión.
+- **Límite de subida corregido**: el real era **1 MB** (valor por defecto de Spring Boot, sin configurar) mientras la documentación prometía 10 MB, y un fichero de 2 MB devolvía **500**. Ahora **25 MB** declarados en `spring.servlet.multipart.*` y en `mecania.upload.max-bytes`, con el servicio validando el mismo número. `ArchivoDemasiadoGrandeException` y `MaxUploadSizeExceededException` mapeadas a **413** con el límite en el mensaje: las dos vías devuelven el mismo contrato.
+- **Contrato de errores**: ruta inexistente → **404** `recurso_no_encontrado` (antes 500 con el nombre de la excepción) y el manejador genérico ya no devuelve `clase: mensaje` al cliente: el detalle va al log y el cliente recibe un mensaje genérico. Filtraba la estructura interna en cada error, incluida `/swagger-ui.html`.
+- **Secreto JWT sin valor por defecto**: `mecania.jwt.secret=${JWT_SECRET:}`. Antes el repositorio traía un secreto de desarrollo público y un despliegue sin la variable arrancaba sin quejarse, firmando tokens con un valor conocido.
+- **`/health/ready`**: readiness que comprueba base de datos, clave de embeddings y almacenamiento escribible (503 si falla alguna). Motivo concreto: el despliegue de hoy tenía `/health` en `UP` con el pipeline de embeddings muerto porque el contenedor no veía la clave.
+- **Tests**: 203 → **211** (178 unitarios + 33 de integración): +4 `GlobalExceptionHandlerTest`, +3 `HealthReadyIT`, +1 de frontera en `DocumentoServiceTest`.
+
 ## 2026-09-16 (Fase 7: despliegue y monitoreo)
 
 - **CI**: workflow `.github/workflows/ci.yml` que ejecuta `mvn verify` en cada push a `main` (y en PRs).

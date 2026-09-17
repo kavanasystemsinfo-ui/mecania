@@ -1,11 +1,13 @@
 package com.kavanamecania.mecania.application;
 
 import com.kavanamecania.mecania.application.evento.DocumentoSubidoEvent;
+import com.kavanamecania.mecania.domain.exception.ArchivoDemasiadoGrandeException;
 import com.kavanamecania.mecania.domain.model.Documento;
 import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
 import com.kavanamecania.mecania.infrastructure.repository.DocumentoRepository;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +23,18 @@ public class DocumentoService {
     private final VehiculoRepository vehiculoRepository;
     private final AlmacenamientoArchivos almacenamientoArchivos;
     private final ApplicationEventPublisher eventPublisher;
+    private final long maxUploadBytes;
 
     public DocumentoService(DocumentoRepository documentoRepository,
                             VehiculoRepository vehiculoRepository,
                             AlmacenamientoArchivos almacenamientoArchivos,
-                            ApplicationEventPublisher eventPublisher) {
+                            ApplicationEventPublisher eventPublisher,
+                            @Value("${mecania.upload.max-bytes:26214400}") long maxUploadBytes) {
         this.documentoRepository = documentoRepository;
         this.vehiculoRepository = vehiculoRepository;
         this.almacenamientoArchivos = almacenamientoArchivos;
         this.eventPublisher = eventPublisher;
+        this.maxUploadBytes = maxUploadBytes;
     }
 
     public AlmacenamientoArchivos getAlmacenamientoArchivos() {
@@ -66,11 +71,11 @@ public class DocumentoService {
                     ". Soportados: PDF, TXT, DOCX");
         }
 
-        // Validate size (10MB limit)
-        long maxSizeBytes = 10 * 1024 * 1024; // 10MB
-        if (file.getSize() > maxSizeBytes) {
-            throw new IllegalArgumentException("Archivo demasiado grande: " + file.getSize() +
-                    " bytes. Máximo permitido: " + maxSizeBytes + " bytes");
+        // Validate size against the configured limit (see mecanic.upload.max-bytes)
+        if (file.getSize() > maxUploadBytes) {
+            throw new ArchivoDemasiadoGrandeException("Archivo demasiado grande: " + file.getSize() +
+                    " bytes. Máximo permitido: " + maxUploadBytes + " bytes ("
+                    + (maxUploadBytes / (1024 * 1024)) + " MB)");
         }
 
         try {

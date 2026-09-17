@@ -191,7 +191,7 @@
                         <div class="mb-3">
                             <label class="form-label">Subir documento para este vehículo</label>
                             <input class="form-control" type="file" id="documentFile" accept=".pdf,.txt,.docx">
-                            <div class="form-text">Formatos permitidos: PDF, TXT, DOCX. Máximo 10 MB.</div>
+                            <div class="form-text">Formatos permitidos: PDF, TXT, DOCX. Máximo 25 MB.</div>
                         </div>
                         <button class="btn btn-primary me-2" id="uploadDocumentBtn">Subir Documento</button>
                         <button class="btn btn-outline-secondary" id="refreshDocumentsBtn">Actualizar lista</button>
@@ -234,7 +234,7 @@
                             <input type="url" class="form-control" id="manualUrl" placeholder="https://.../manual.pdf">
                             <button class="btn btn-outline-secondary" id="importUrlBtn" type="button">Importar URL</button>
                         </div>
-                        <div class="form-text mb-3">Formatos admitidos: PDF, TXT, DOCX. Máximo 10 MB.</div>
+                        <div class="form-text mb-3">Formatos admitidos: PDF, TXT, DOCX. Máximo 10 MB por esta vía (descarga desde internet).</div>
                     </div>
 
                     <!-- Alertas tab -->
@@ -597,9 +597,9 @@ async function uploadDocument() {
         showDocumentAlert('Tipo de archivo no permitido. Use PDF, TXT o DOCX.', 'danger');
         return;
     }
-    // Validate size (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-        showDocumentAlert('El archivo es demasiado grande. Máximo 10 MB permitido.', 'danger');
+    // Validate size (25MB: mismo límite que spring.servlet.multipart.max-file-size)
+    if (file.size > 25 * 1024 * 1024) {
+        showDocumentAlert('El archivo es demasiado grande. Máximo 25 MB permitido.', 'danger');
         return;
     }
 
@@ -994,7 +994,7 @@ document.getElementById('documentFile').addEventListener('change', function() {
     if (fileName) {
         this.nextElementSibling.textContent = `Archivo seleccionado: ${fileName}`;
     } else {
-        this.nextElementSibling.textContent = 'Formatos permitidos: PDF, TXT, DOCX. Máximo 10 MB.';
+        this.nextElementSibling.textContent = 'Formatos permitidos: PDF, TXT, DOCX. Máximo 25 MB.';
     }
 });
 

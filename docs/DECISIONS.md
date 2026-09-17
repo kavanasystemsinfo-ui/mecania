@@ -30,5 +30,5 @@ Este archivo lista todas las decisiones arquitectónicas documentadas en forma d
 
 - Los ADRs reflejan el estado actual del código. Cada decisión incluye alternativas evaluadas y consecuencias, permitiendo a un nuevo ingeniero entender el trade-off tomado.
 - Los archivos `docs/adr/001-stack-tecnologico.md`, `docs/adr/002-seguridad-abierta-mvp.md`, `docs/adr/003-almacenamiento-manuales-disco-local.md`, `docs/adr/004-embeddings-y-procesamiento-async.md`, `docs/adr/005-busqueda-asistida-manuales.md`, `docs/adr/006-chat-rag-por-vehiculo.md`, `docs/adr/007-alertas-mantenimiento.md` y `docs/adr/008-autenticacion-jwt-multi-tenencia.md` están presentes y verificados.
-- **Tests reales**: 202 tests (173 unitarios + 29 de integración), todos verdes en `mvn verify` (Java 21). Detalle por suite en `docs/METRICS.md`. Cifra verificada ejecutando la suite, no por grep.
+- **Tests reales**: 211 tests (178 unitarios + 33 de integración), todos verdes en `mvn verify` (Java 21). Detalle por suite en `docs/METRICS.md`. Cifra verificada ejecutando la suite, no por grep.
 - **Verificación end-to-end**: tras implementar la subida de documentos, se ha ejecutado un flujo completo vía `curl` (crear vehículo → subir PDF/TXT → listar → descargar) y se ha confirmado que el contenido descargado coincide con el original.
