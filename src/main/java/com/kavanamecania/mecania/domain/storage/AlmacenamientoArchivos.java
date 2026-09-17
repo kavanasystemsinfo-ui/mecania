@@ -2,7 +2,9 @@ package com.kavanamecania.mecania.domain.storage;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * Estrategia para almacenar archivos de manuales.
@@ -47,4 +49,26 @@ public interface AlmacenamientoArchivos {
      * @throws IOException si falla la eliminación
      */
     void eliminarArchivo(String rutaRelativa) throws IOException;
+
+    /**
+     * Lee el archivo como flujo, sin cargarlo entero en memoria. La
+     * implementación por defecto reutiliza {@link #leerArchivo}; los almacenes de
+     * objetos lo sobrescriben para no traerse el fichero completo a heap.
+     *
+     * @param rutaRelativa ruta tal como se obtuvo de {@link #guardarArchivo}
+     * @return flujo de lectura; quien lo abre es quien lo cierra
+     * @throws IOException si no se puede leer
+     */
+    default InputStream leerArchivoStream(String rutaRelativa) throws IOException {
+        return new ByteArrayInputStream(leerArchivo(rutaRelativa));
+    }
+
+    /**
+     * Comprueba que el almacén está operativo (directorio escribible, bucket que
+     * responde). Lo usa {@code /health/ready}: un servicio que dice estar listo
+     * con el almacenamiento caído miente.
+     */
+    default boolean disponible() {
+        return true;
+    }
 }

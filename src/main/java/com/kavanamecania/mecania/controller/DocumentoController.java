@@ -7,7 +7,9 @@ import com.kavanamecania.mecania.domain.model.Vehiculo;
 import com.kavanamecania.mecania.infrastructure.repository.VehiculoRepository;
 import com.kavanamecania.mecania.security.SecurityUtils;
 import jakarta.validation.constraints.NotNull;
-import org.springframework.core.io.ByteArrayResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,6 +18,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +26,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/vehiculos/{vehiculoId}/documentos")
 @Validated
 public class DocumentoController {
+
+    private static final Logger log = LoggerFactory.getLogger(DocumentoController.class);
 
     private final DocumentoService documentoService;
     private final VehiculoRepository vehiculoRepository;
@@ -64,6 +69,13 @@ public class DocumentoController {
     public ResponseEntity<Resource> downloadDocumento(
             @NotNull @PathVariable Long vehiculoId,
             @NotNull @PathVariable Long documentoId) {
+        // Igual que en la subida y el listado: el vehículo tiene que ser del
+        // usuario autenticado. Sin esta comprobación bastaba con adivinar ids
+        // ajenos para descargar manuales de otra cuenta.
+        if (!vehiculoRepository.existsByIdAndUsuarioId(vehiculoId, SecurityUtils.usuarioIdActual())) {
+            return ResponseEntity.notFound().build();
+        }
+
         var documentoOpt = documentoService.findByIdAndVehiculoId(documentoId, vehiculoId);
         if (documentoOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -71,14 +83,23 @@ public class DocumentoController {
         var documento = documentoOpt.get();
 
         try {
-            byte[] data = documentoService.getAlmacenamientoArchivos().leerArchivo(documento.getRutaAlmacenamiento());
+            // En flujo: un manual de 25 MB no tiene por qué pasar entero por heap
+            // (en producción el contenedor tiene 384 MB y el almacén es remoto).
+            InputStream datos = documentoService.getAlmacenamientoArchivos()
+                    .leerArchivoStream(documento.getRutaAlmacenamiento());
             String filename = documento.getNombre();
 
-            return ResponseEntity.ok()
+            ResponseEntity.BodyBuilder respuesta = ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                    .body(new ByteArrayResource(data));
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+            if (documento.getTamanoBytes() != null) {
+                respuesta.contentLength(documento.getTamanoBytes());
+            }
+            return respuesta.body(new InputStreamResource(datos));
         } catch (Exception e) {
+            // El detalle va al log del servidor; al cliente no se le enseña la
+            // ruta interna del almacén ni el mensaje del proveedor.
+            log.error("No se pudo descargar el documento {} del vehículo {}", documentoId, vehiculoId, e);
             return ResponseEntity.status(500).build();
         }
     }

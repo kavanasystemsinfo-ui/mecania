@@ -49,6 +49,13 @@ No hay frontend separado: la UI (`index.html`) la sirve el propio backend.
 | `DB_PASSWORD` | contraseña de Neon |
 | `JWT_SECRET` | cadena aleatoria de al menos 32 caracteres |
 | `OPENROUTER_API_KEY` | tu clave de OpenRouter |
+| `MECANIA_STORAGE_TIPO` | `s3` (sin esto los manuales se guardan en el disco efímero del contenedor y se pierden en cada despliegue) |
+| `MECANIA_S3_BUCKET` | nombre del bucket (ej. `mecania-manuales`) |
+| `MECANIA_S3_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `MECANIA_S3_REGION` | `auto` |
+| `MECANIA_S3_ACCESS_KEY` | Access Key ID del token de R2 |
+| `MECANIA_S3_SECRET_KEY` | Secret Access Key del token de R2 |
+| `MECANIA_S3_PATH_STYLE` | `false` en R2; `true` solo con MinIO local |
 
 Render hace ping a `/health` (200 = la app y la BD están vivas). No requiere
 autenticación: está fuera de `/api/**`.
@@ -62,7 +69,34 @@ proveedor de IA caído no debe provocar reinicios en bucle de la aplicación.
 También hay un `render.yaml` (Blueprint) con la misma configuración por si se
 prefiere desplegar con `render blueprint`.
 
-## 3. Verificar el despliegue
+## 3. Almacenamiento de manuales (Cloudflare R2)
+
+Sin esto, los manuales viven en el disco del contenedor y desaparecen en cada
+redespliegue: la base de datos conserva documentos, fragmentos, vectores y
+conversaciones que los citan, pero las descargas dan 404 (ADR-010).
+
+1. Cloudflare → R2 → **Create bucket** (`mecania-manuales`, región automática).
+2. R2 → **Manage API Tokens** → Create API Token con permiso *Object Read &
+   Write* limitado a ese bucket. De ahí salen el `Access Key ID` y el
+   `Secret Access Key`.
+3. El `ACCOUNT_ID` está en la URL del panel de R2 y forma el endpoint:
+   `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+4. Rellenar las variables `MECANIA_S3_*` del servicio y verificar:
+   `curl -s https://<servicio>/health/ready` → `"almacenamiento":"UP"`.
+
+Notas:
+
+- El valor que se guarda en base de datos es la **clave** del objeto
+  (`vehiculos/82/documentos/manual.pdf`), idéntica a la ruta relativa del disco:
+  cambiar de backend no toca el modelo ni las filas existentes.
+- Los manuales subidos antes de activar S3 (cuando el servicio guardaba en
+  disco) no se migran: se pierden con el siguiente despliegue. Los que se suban
+  a partir de la activación persisten.
+- Nada borra todavía objetos del bucket: no hay endpoint de borrado de
+  documentos y borrar un vehículo no borra sus objetos. Pendiente con ticket
+  propio.
+
+## 4. Verificar el despliegue
 
 ```bash
 # health check rápido (el que usa Render)
@@ -77,7 +111,7 @@ curl -s -X POST https://<servicio>.onrender.com/api/auth/register \
   -d '{"email":"demo@test.com","password":"secreto123"}'
 ```
 
-## 4. Secretos y seguridad
+## 5. Secretos y seguridad
 
 - `JWT_SECRET` y `OPENROUTER_API_KEY` viven SOLO en las env vars del servicio,
   nunca en el repo. `mecania.jwt.secret` **no tiene valor por defecto**: si

@@ -5,7 +5,7 @@ Qué cubren los tests, no solo cuántos.
 ## Resumen
 
 Suite ejecutada con `mvn verify` (2026-09-17):
-**211 tests en 30 suites — todos verdes** (178 unitarios en `mvn test` + 33 de
+**231 tests en 33 suites — todos verdes** (195 unitarios en `mvn test` + 36 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
@@ -17,7 +17,7 @@ suite, no de contar `@Test` con grep.
 - **AlertaControllerIT (2)**: flujo crear/listar/actualizar/eliminar (201/200/404/204) y revisión de vencidas que devuelve la alerta vencida y la deja desactivada.
 - **BusquedaManualesControllerIT (11)**: contrato HTTP de la Fase 3 con el buscador y el descargador mockeados: candidatos devueltos sin descargar nada, consulta libre traducida a "Toyota Corolla 2018 manual cambio de aceite", 503 con `buscador_no_disponible` cuando el buscador bloquea, 404 si el vehículo no existe, 201 al importar, 400 con URL vacía (validación) y con URL no http, 415 con tipo no soportado, 413 con archivo demasiado grande, 404 en importación de vehículo inexistente y **200 con `yaExistia: true` al reimportar sin duplicar documentos**.
 - **AuthControllerIT (6)**: contrato HTTP de autenticación con la seguridad REAL activa (perfil `test-auth`): registro 201 con token, registro duplicado 409, login 200 con token, login con contraseña incorrecta 401, endpoint protegido sin token 401 y con token 200.
-- **MultiTenenciaIT (2)**: un usuario autenticado no ve (404) ni puede borrar (404) vehículos ajenos, y el listado de un usuario sin vehículos propios está vacío.
+- **MultiTenenciaIT (3)**: un usuario autenticado no ve (404) ni puede borrar (404) vehículos ajenos, el listado de un usuario sin vehículos propios está vacío, y **no puede descargar (404) un manual de otro usuario aunque conozca los ids** (hueco real: el endpoint de descarga no comprobaba la pertenencia del vehículo), mientras el dueño sí lo descarga y el contenido llega intacto por el camino de streaming.
 - **HealthControllerIT (1)**: `/health` devuelve 200 `UP` sin autenticación (hace `SELECT 1` contra H2).
 - **HealthReadyIT (3)**: `/health/ready` devuelve 200 `UP` con las tres comprobaciones en verde (base de datos, clave de embeddings y almacenamiento escribible) y 503 `DOWN` en cuanto falla la clave de embeddings o el almacenamiento: el servicio no puede declararse listo con la IA muerta.
 
@@ -74,6 +74,11 @@ suite, no de contar `@Test` con grep.
 ### Capa de infraestructura — almacenamiento (AlmacenamientoDiscoLocalTest)
 - **18 tests**: guardar/leer/eliminar reales con tempdir, subdirectorio vacío, **3 tests de seguridad** (nombre con `../` se sanitiza y no escapa del baseDir; lectura y borrado con rutas traviesas se rechazan), hardening de nombres especiales (`/`, `.`, `..`, byte NUL) y rutas que colapsan sobre la raíz, más **5 tests de la vía `guardarArchivo(byte[])`** que usa la importación desde internet: escritura real, nombre travieso saneado, nombres especiales, contenido vacío rechazado y subdirectorio que escapa rechazado.
 
+### Capa de infraestructura — almacenamiento en objetos (AlmacenamientoS3Test, AlmacenamientoContratoTest)
+- **AlmacenamientoS3Test (14)**: cliente S3 mockeado, así que se prueba el comportamiento del adaptador y no la red del proveedor: clave construida a partir del subdirectorio (`vehiculos/7/documentos/manual.pdf`), bucket y content-type de la petición, nombre travieso (`../../../etc/passwd` → `passwd`), subdirectorio con `..` o absoluto rechazado **sin llamar al proveedor**, contenido vacío rechazado en las dos vías, subida de bytes descargados de internet, lectura completa, **lectura en flujo**, objeto inexistente → error claro, fallo del proveedor envuelto con su mensaje (y sin reventar cuando la excepción no trae detalles), borrado por clave, `disponible()` según `headBucket` y validación del nombre del bucket.
+- **AlmacenamientoContratoTest (3)**: las **dos** implementaciones a la vez. El mismo nombre produce la misma ruta relativa en disco y en el bucket (incluidos `../../etc/passwd`, `/absoluto/manual.txt`, `.`, `..` y `carpeta/manual.txt`), los dos rechazan un subdirectorio que escapa y los dos rechazan contenido vacío. Es la red que impide que la sanitización de un backend se separe de la del otro.
+- **SeleccionDeAlmacenamientoIT (2)**: sin configuración se registra el disco local; con `mecania.storage.tipo=s3` se registra el almacén de objetos y el contexto arranca. Existe por un fallo real: con los dos beans sin condición, arrancar en modo S3 reventaba con *"required a single bean, but 2 were found"*.
+
 ### Capa de infraestructura — procesamiento (DocumentoProcessorIT)
 - **5 tests de integración** (sobre H2, perfil `test`): extrae→chunckea→persiste fragmentos, error sin API key marca documento ERROR sin fragmentos (espera determinista por polling, no Thread.sleep), **fallo a mitad** (embedding falla en el 2º fragmento → rollback real → CERO fragmentos), **se guarda un vector por fragmento** (id y embedding correctos) y **fallo del almacén de vectores revierte la transacción** (CERO fragmentos).
 
@@ -84,6 +89,7 @@ suite, no de contar `@Test` con grep.
 - **Persistencia y búsqueda pgvector en la suite**: la query SQL real (`<=>`, `PGobject`, `CREATE EXTENSION`) NO se cubre en la suite porque H2 no tiene pgvector. El puerto `RepositorioVectores` se mockea en los tests (lógica del chat y rollback), y el SQL real se verifica con un smoke test contra el PostgreSQL de desarrollo.
 - **Escenarios de concurrencia**: no se testa aún condiciones de carrera bajo carga alta; se asumirá en fases posteriores si el dominio lo requiere.
 - **Testcontainers para PostgreSQL**: las dependencias están declaradas pero no se usan todavía; las pruebas actuales son unitarias con mocks o H2.
+- **Almacén de objetos en CI**: el adaptador S3 se prueba con el cliente mockeado y con el test de contrato, pero **la suite no habla con un S3 real** (haría falta Docker/Testcontainers en el runner). La verificación real se hace contra MinIO en el VPS con `scripts/mecania_s3_check.sh`: subida, objeto en el bucket, nada escrito en disco, procesamiento, y descarga con hash idéntico **después de matar y relanzar la aplicación** (que es la prueba de que el manual sobrevive a un redespliegue).
 
 ## Cómo leer este archivo
 

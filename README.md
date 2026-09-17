@@ -5,7 +5,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![pgvector](https://img.shields.io/badge/pgvector-enabled-orange)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-lightgrey)
-![Tests](https://img.shields.io/badge/tests-211-brightgreen)
+![Tests](https://img.shields.io/badge/tests-231-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 🎯 Qué es Mecania y por qué existe (como pieza de portafolio)
@@ -154,7 +154,7 @@ La aplicación estará disponible en `http://localhost:8080`.
   curl -O http://localhost:8080/api/vehiculos/1/documentos/5/download
   ```
 
-La implementación actual guarda los archivos en disco local (ver [ADR 003](docs/adr/003-almacenamiento-manuales-disco-local.md)). La interfaz `AlmacenamientoArchivos` está pensada para sustituirse por Supabase Storage o S3 sin tocar el resto del código.
+La implementación actual guarda los archivos detrás de la interfaz `AlmacenamientoArchivos`, con dos implementaciones: disco local en desarrollo (`mecania.storage.tipo=local`, el valor por defecto) y **un servicio de objetos compatible con S3 en producción** (`mecania.storage.tipo=s3`, Cloudflare R2), porque el disco de un contenedor es efímero y en cada redespliegue se perdían los manuales. La descarga se sirve en flujo, sin cargar el fichero entero en memoria. Ver [ADR 010](docs/adr/010-almacenamiento-objetos-s3.md) y [ADR 003](docs/adr/003-almacenamiento-manuales-disco-local.md) (sustituido en producción).
 
 #### Búsqueda asistida de manuales (Fase 3)
 

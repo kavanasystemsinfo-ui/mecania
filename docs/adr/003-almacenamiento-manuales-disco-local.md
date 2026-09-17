@@ -1,7 +1,7 @@
 # ADR 003: Estrategia de almacenamiento de manuales subidos
 
-**Estado:** Aceptado   
-**Fecha:** 2026-09-04   
+**Estado:** Sustituido por [ADR-010](010-almacenamiento-objetos-s3.md) para producción el 2026-09-17. El disco local sigue siendo el modo de desarrollo (`mecania.storage.tipo=local`, el valor por defecto).  
+**Fecha:** 2026-09-04  
 
 ## Contexto
 Mecania necesita permitir a los usuarios subir manuales de sus vehículos (PDF/TXT/DOCX) y asociarlos a un vehículo concreto. Estos archivos deben persistir entre reinicios del servidor y ser descargables. En fases posteriores (Fase 2), se procesarán para generar embeddings y alimentar el chat RAG.

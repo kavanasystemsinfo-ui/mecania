@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -82,5 +83,36 @@ class MultiTenenciaIT {
 
         mvc.perform(delete("/api/vehiculos/" + vehiculoA).header("Authorization", "Bearer " + tokenB))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void usuario_no_puede_descargar_un_manual_ajeno_y_si_el_suyo() throws Exception {
+        String tokenA = registrar("e@mt.com", "secreto123");
+        String tokenB = registrar("f@mt.com", "secreto123");
+
+        Long vehiculoA = crearVehiculo(tokenA, "Renault");
+
+        byte[] contenido = "Manual privado del vehículo de A".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        MvcResult subida = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .multipart("/api/vehiculos/" + vehiculoA + "/documentos")
+                        .file(new org.springframework.mock.web.MockMultipartFile(
+                                "file", "privado.txt", "text/plain", contenido))
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andReturn();
+        Long documentoA = om.readTree(subida.getResponse().getContentAsString()).get("id").asLong();
+
+        // B conoce el id del vehículo y el del documento de A: no debe poder bajarlo
+        mvc.perform(get("/api/vehiculos/" + vehiculoA + "/documentos/" + documentoA + "/download")
+                        .header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+
+        // A sí lo descarga, y el contenido llega intacto por el camino de streaming
+        MvcResult descarga = mvc.perform(get("/api/vehiculos/" + vehiculoA + "/documentos/" + documentoA + "/download")
+                        .header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(descarga.getResponse().getContentAsByteArray()).isEqualTo(contenido);
+        assertThat(descarga.getResponse().getContentType()).isEqualTo("application/octet-stream");
     }
 }

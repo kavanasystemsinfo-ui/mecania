@@ -7,13 +7,14 @@ Este archivo lista todas las decisiones arquitectónicas documentadas en forma d
 | # | Título | Estado | Fecha |
 |---|--------|--------|-------|
 | [ADR-001](docs/adr/001-stack-tecnologico.md) | Stack: Java 21 + Spring Boot 3.4 + PostgreSQL + pgvector | ✅ Implementado | 2026-09-03 |
-| [ADR-002](docs/adr/002-seguridad-abierta-mvp.md) | Seguridad abierta en fase MVP (permitAll) | ✅ Implementado | 2026-09-04 |
-| [ADR-003](docs/adr/003-almacenamiento-manuales-disco-local.md) | Almacenamiento de manuales: disco local con abstracción preparada para Supabase Storage | ✅ Implementado | 2026-09-04 |
+| [ADR-002](docs/adr/002-seguridad-abierta-mvp.md) | Seguridad abierta en fase MVP (permitAll) | 🔄 Sustituido por ADR-008 | 2026-09-04 |
+| [ADR-003](docs/adr/003-almacenamiento-manuales-disco-local.md) | Almacenamiento de manuales: disco local con abstracción preparada para Supabase Storage | 🔄 Sustituido por ADR-010 en producción (sigue en desarrollo) | 2026-09-04 |
 | [ADR-004](docs/adr/004-embeddings-y-procesamiento-async.md) | Estrategia de embeddings y procesamiento asíncrono (extracción, chunking, OpenRouter, @Async con AFTER_COMMIT) | ✅ Implementado | 2026-09-04 |
 | [ADR-005](docs/adr/005-busqueda-asistida-manuales.md) | Búsqueda asistida de manuales (DuckDuckGo HTML + Jsoup) y descarga selectiva con validación SSRF | ✅ Implementado | 2026-09-16 |
 | [ADR-006](docs/adr/006-chat-rag-por-vehiculo.md) | Chat RAG por vehículo con pgvector (persistencia de vectores por JDBC nativo + umbral de similitud + LLM con fuentes) | ✅ Implementado | 2026-09-16 |
 | [ADR-007](docs/adr/007-alertas-mantenimiento.md) | Alertas de mantenimiento por vehículo (CRUD anidado + RevisorAlertas con repetitividad y notificación por log) | ✅ Implementado | 2026-09-16 |
 | [ADR-008](docs/adr/008-autenticacion-jwt-multi-tenencia.md) | Autenticación JWT (jjwt HS256) y multi-tenencia (cada usuario solo ve/toca sus vehículos) | ✅ Implementado | 2026-09-16 |
+| [ADR-010](docs/adr/010-almacenamiento-objetos-s3.md) | Almacenamiento de manuales en un servicio de objetos compatible con S3 (Cloudflare R2 en producción) | ✅ Implementado | 2026-09-17 |
 
 ## Resumen ejecutivo (una línea por ADR)
 
@@ -25,10 +26,11 @@ Este archivo lista todas las decisiones arquitectónicas documentadas en forma d
 6. **ADR-006 — Chat RAG por vehículo.** Los embeddings se persisten en una tabla auxiliar `fragmento_embeddings` por JDBC nativo (Hibernate no mapea `vector`); la búsqueda por coseno (`<=>`) filtra siempre por `vehiculo_id`. El chat vectoriza la pregunta, recupera top-K por encima de un umbral de similitud y, si no hay fragmentos relevantes, responde "sin base" sin llamar al LLM. La respuesta devuelve las fuentes que la sostienen.
 7. **ADR-007 — Alertas de mantenimiento.** CRUD anidado bajo `/api/vehiculos/{id}/alertas` (pertenencia al vehículo estructural). `Repetitividad` (UNICA/MENSUAL/ANUAL) con lógica de vencimiento en `RevisorAlertas`: las únicas se desactivan al vencer y las repetitivas avanzan su fecha saltando ocurrencias pasadas. La revisión es manual por endpoint y la notificación es un log de consola (webhook futuro).
 8. **ADR-008 — Autenticación y multi-tenencia.** JWT HS256 con `jjwt` (register/login devuelven token, `JwtAuthenticationFilter` valida y extrae `uid`). `VehiculoRequest` ya no lleva `usuarioId`: el dueño sale del token y `VehiculoRepository.findByIdAndUsuarioId/existsByIdAndUsuarioId` garantizan que cada usuario solo ve/toca sus vehículos (404 en accesos ajenos). El secreto es de desarrollo y en despliegue irá en el entorno.
+9. **ADR-010 — Almacenamiento en objetos (S3/R2).** El disco del contenedor es efímero, así que los manuales se guardan en un servicio compatible con S3 (Cloudflare R2) detrás de la misma interfaz `AlmacenamientoArchivos` que dejó el ADR-003. El valor de base de datos es la clave del objeto, así que cambiar de backend no toca el modelo. Se elige con `mecania.storage.tipo` (`local` en desarrollo, `s3` en producción), la descarga va en flujo y `/health/ready` comprueba que el bucket responde.
 
 ## Verificación de la documentación contra el código
 
 - Los ADRs reflejan el estado actual del código. Cada decisión incluye alternativas evaluadas y consecuencias, permitiendo a un nuevo ingeniero entender el trade-off tomado.
-- Los archivos `docs/adr/001-stack-tecnologico.md`, `docs/adr/002-seguridad-abierta-mvp.md`, `docs/adr/003-almacenamiento-manuales-disco-local.md`, `docs/adr/004-embeddings-y-procesamiento-async.md`, `docs/adr/005-busqueda-asistida-manuales.md`, `docs/adr/006-chat-rag-por-vehiculo.md`, `docs/adr/007-alertas-mantenimiento.md` y `docs/adr/008-autenticacion-jwt-multi-tenencia.md` están presentes y verificados.
-- **Tests reales**: 211 tests (178 unitarios + 33 de integración), todos verdes en `mvn verify` (Java 21). Detalle por suite en `docs/METRICS.md`. Cifra verificada ejecutando la suite, no por grep.
+- Los archivos `docs/adr/001-stack-tecnologico.md`, `docs/adr/002-seguridad-abierta-mvp.md`, `docs/adr/003-almacenamiento-manuales-disco-local.md`, `docs/adr/004-embeddings-y-procesamiento-async.md`, `docs/adr/005-busqueda-asistida-manuales.md`, `docs/adr/006-chat-rag-por-vehiculo.md`, `docs/adr/007-alertas-mantenimiento.md`, `docs/adr/008-autenticacion-jwt-multi-tenencia.md` y `docs/adr/010-almacenamiento-objetos-s3.md` están presentes y verificados. (El 009 está reservado para la decisión de plataformas de despliegue y todavía no está escrito.)
+- **Tests reales**: 231 tests (195 unitarios + 36 de integración), todos verdes en `mvn verify` (Java 21). Detalle por suite en `docs/METRICS.md`. Cifra verificada ejecutando la suite, no por grep.
 - **Verificación end-to-end**: tras implementar la subida de documentos, se ha ejecutado un flujo completo vía `curl` (crear vehículo → subir PDF/TXT → listar → descargar) y se ha confirmado que el contenido descargado coincide con el original.

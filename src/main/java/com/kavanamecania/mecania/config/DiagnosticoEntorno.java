@@ -1,13 +1,11 @@
 package com.kavanamecania.mecania.config;
 
+import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 /**
  * Comprobación honesta del estado del servicio.
@@ -25,15 +23,15 @@ public class DiagnosticoEntorno {
 
     private final JdbcTemplate jdbcTemplate;
     private final String claveEmbeddingsConfigurada;
-    private final Path directorioAlmacenamiento;
+    private final AlmacenamientoArchivos almacenamiento;
 
     public DiagnosticoEntorno(
             JdbcTemplate jdbcTemplate,
             @Value("${mecania.embedding.api-key:}") String claveEmbeddingsConfigurada,
-            @Value("${mecania.storage.dir:${user.home}/mecania-storage}") String directorioAlmacenamiento) {
+            AlmacenamientoArchivos almacenamiento) {
         this.jdbcTemplate = jdbcTemplate;
         this.claveEmbeddingsConfigurada = claveEmbeddingsConfigurada;
-        this.directorioAlmacenamiento = Path.of(directorioAlmacenamiento).toAbsolutePath().normalize();
+        this.almacenamiento = almacenamiento;
     }
 
     /** La base de datos responde. */
@@ -58,16 +56,12 @@ public class DiagnosticoEntorno {
         return clave != null && !clave.isBlank();
     }
 
-    /** El directorio de almacenamiento existe y acepta escrituras. */
+    /**
+     * El almacén configurado está operativo. La pregunta se delega en la
+     * implementación (disco local o almacén de objetos): cada backend sabe qué
+     * significa estar disponible.
+     */
     public boolean almacenamientoEscribible() {
-        try {
-            Files.createDirectories(directorioAlmacenamiento);
-            Path prueba = Files.createTempFile(directorioAlmacenamiento, ".escritura-", ".tmp");
-            Files.deleteIfExists(prueba);
-            return true;
-        } catch (Exception e) {
-            log.warn("Almacenamiento no escribible en {}: {}", directorioAlmacenamiento, e.getMessage());
-            return false;
-        }
+        return almacenamiento.disponible();
     }
 }

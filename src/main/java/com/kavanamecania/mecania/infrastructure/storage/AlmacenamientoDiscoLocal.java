@@ -1,7 +1,10 @@
 package com.kavanamecania.mecania.infrastructure.storage;
 
 import com.kavanamecania.mecania.domain.storage.AlmacenamientoArchivos;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -22,7 +25,10 @@ import java.nio.file.StandardCopyOption;
  * dentro del {@code baseDir}.</p>
  */
 @Component
+@ConditionalOnProperty(name = "mecania.storage.tipo", havingValue = "local", matchIfMissing = true)
 public class AlmacenamientoDiscoLocal implements AlmacenamientoArchivos {
+
+    private static final Logger log = LoggerFactory.getLogger(AlmacenamientoDiscoLocal.class);
 
     private final Path baseDir;
 
@@ -116,6 +122,25 @@ public class AlmacenamientoDiscoLocal implements AlmacenamientoArchivos {
             return;
         }
         Files.delete(fullPath);
+    }
+
+    /**
+     * El directorio base existe y acepta escrituras. Se comprueba escribiendo y
+     * borrando un fichero temporal: los permisos pueden cambiar después de
+     * arrancar (un volumen que se desmonta, por ejemplo) y un health check que
+     * solo mira si el directorio existe no lo detectaría.
+     */
+    @Override
+    public boolean disponible() {
+        try {
+            Files.createDirectories(baseDir);
+            Path prueba = Files.createTempFile(baseDir, ".escritura-", ".tmp");
+            Files.deleteIfExists(prueba);
+            return true;
+        } catch (Exception e) {
+            log.warn("Almacenamiento no escribible en {}: {}", baseDir, e.getMessage());
+            return false;
+        }
     }
 
     /**
