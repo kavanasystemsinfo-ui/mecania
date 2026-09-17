@@ -49,12 +49,12 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~ADR que documente la elección (JWT vs session, secret management, expiración).~~ ✅ ADR 008
 - ~~UI de login en el front (index.html).~~ ✅ overlay Entrar/Crear cuenta, sesión en localStorage, token en todas las llamadas y botón Salir.
 
-### Fase 7: Despliegue y monitoreo
+### Fase 7: Despliegue y monitoreo ✅
 - ~~Pipeline GitHub Actions que ejecuta `mvn verify`.~~ ✅ `.github/workflows/ci.yml` (verde en cada push a main y en PRs)
 - ~~Health checks endpoints.~~ ✅ `/health` (200 UP / 503 DOWN, hace `SELECT 1` contra la BD, sin auth) y `/health/ready` (200/503 comprobando BD + clave de embeddings + almacenamiento escribible)
 - ~~Logging estructurado y rotación de logs.~~ ✅ `logback-spring.xml` (consola + archivo, 10 MB / 7 días / tope 100 MB)
 - ~~Documentación de pasos para desplegar en producción.~~ ✅ `docs/DEPLOY.md` + `Dockerfile` + `render.yaml`
-- Desplegar a un servicio managed (Render + Neon): ⏳ pendiente, requiere las cuentas del titular (se guía un paso por vez).
+- ~~Desplegar a un servicio managed (Render + Neon):~~ ✅ en producción desde 2026-09-16 en `https://mecania.kavanasystems.com` (Render Docker Frankfurt + Neon PostgreSQL 16 con pgvector), desplegado por API y verificado end-to-end (registro → vehículo → subida → `LISTO` → chat con fuentes).
 
 ## Lo que NO haremos (por ahora o nunca)
 - **APIs de búsqueda de pago** (Tavily, AIsa, Brave Search): la búsqueda de manuales usa el HTML público de DuckDuckGo con Jsoup (Fase 3, ADR 005) para no consumir saldo del titular del proyecto.

@@ -29,7 +29,7 @@
 - *Negativas:*
   - Jorge tiene menos experiencia directa en Java que en TypeScript, pero la curva de aprendizaje es razonable para un stack conocido y la documentación es amplia.
   - El tiempo de compilación de Java es mayor que de TypeScript interpretado, pero esto es aceptable para un proyecto de portfolio.
-  - La extensión pgvector requiere una versión específica de PostgreSQL (usamos la imagen ankane/pgvector:pg16 en Docker Compose).
+  - La extensión pgvector requiere una versión específica de PostgreSQL (desarrollo con `pgvector/pgvector:pg15` en Docker Compose, fijada para no depender de una etiqueta móvil; producción en Neon con PostgreSQL 16 y pgvector 0.8.0).
 
 **Alternativas consideradas:**
 
