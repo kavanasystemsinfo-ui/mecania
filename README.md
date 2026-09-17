@@ -5,7 +5,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![pgvector](https://img.shields.io/badge/pgvector-enabled-orange)
 ![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0-lightgrey)
-![Tests](https://img.shields.io/badge/tests-231-brightgreen)
+![Tests](https://img.shields.io/badge/tests-239-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 ## 🎯 Qué es Mecania y por qué existe (como pieza de portafolio)
@@ -17,7 +17,7 @@ Este proyecto muestra:
 - Persistencia con PostgreSQL y extensión pgvector para la búsqueda semántica del chat RAG.
 - API REST completa, testeada y documentada con OpenAPI/Swagger.
 - Decisiones arquitectónicas documentadas en forma de ADRs.
-- Honestidad intelectual sobre limitaciones (p.ej. seguridad abierta en MVP) y suposiciones.
+- Documentar decisiones y limitaciones, incluidas las que se derivan del presupuesto (ver la sección «Cómo está construido y cómo lo construiría con presupuesto» y el ADR-011).
 
 ## 🏗️ Problema que Mecania intenta resolver
 
@@ -59,6 +59,25 @@ graph LR
 - **Contenedores:** Docker + Docker Compose (para PostgreSQL con pgvector)
 - **Frontend (post-MVP):** Bootstrap 5.3 (puede evolucionar a Angular/React si se desea mostrar habilidades frontend)
 
+## 💰 Cómo está construido y cómo lo construiría con presupuesto
+
+Mecania está construido para costar **0 €/mes** y servir a **un solo usuario: yo**. Eso no es una carencia disimulada, es una restricción elegida, y quiero que se lea como lo que es: la decisión consciente de qué comprar y qué no con el dinero que no hay. Sirve para lo que sirve (mi propio coche y mis manuales) y demuestra dos cosas: que sé construir dentro de un presupuesto y que sé decir en qué punto exacto ese presupuesto deja de ser aceptable.
+
+Cada punto de abajo es una decisión deliberada, y al lado está escrito qué cambiaría con usuarios reales. Las decisiones están documentadas con sus alternativas en los ADRs (ver [ADR-011](docs/adr/011-modelos-gratuitos-y-coste-cero.md), [ADR-009](docs/adr/009-plataformas-despliegue.md) y [ADR-010](docs/adr/010-almacenamiento-objetos-s3.md)).
+
+- **Modelo de IA del chat:** una variante gratuita de OpenRouter, con tope de 5 $ configurado en la clave y elegida por configuración, no por código (hoy `nvidia/nemotron-3-ultra-550b-a55b:free`; cuota de 1.000 peticiones al día). Con usuarios reales: un modelo de pago con SLA, caché de respuestas y control de gasto por usuario. El cambio es una variable de entorno.
+- **Embeddings:** `text-embedding-3-small` **de pago**, a propósito. No existe un equivalente gratuito con la misma dimensión y cambiarlo obligaría a migrar la tabla de vectores y recalcular todos los manuales. Coste real: ~0,02 $/millón de tokens, unas cinco diezmilésimas por manual. Con usuarios reales cambiaría solo por privacidad (modelo autoalojado), no por coste.
+- **Base de datos:** Neon en nivel gratuito (0,5 GB, escala a cero, 6 horas de restauración puntual) + volcado diario propio a un bucket. Con usuarios reales: plan con restauración a semanas, réplicas de lectura y backups gestionados.
+- **Almacenamiento de manuales:** Cloudflare R2 en nivel gratuito (10 GB, sin coste de salida). Con usuarios reales: el mismo servicio, con ciclo de vida de objetos y borrado garantizado por RGPD (hoy el borrado de documentos es una carencia conocida y declarada).
+- **Cómputo:** Render en plan gratuito, una sola instancia y arranque en frío de 30 a 90 segundos. Con usuarios reales: instancias dedicadas con autoescalado y sin arranque en frío.
+- **Operación:** vigilante propio de `/health/ready` cada 10 minutos, volcado diario de la base y auto-despliegue. Con usuarios reales: métricas, trazas, alertas con SLO y turno de guardia.
+- **Esquema de base de datos:** `ddl-auto=update` de Hibernate. Con usuarios reales: Flyway con migraciones versionadas y reversibles (ya está en el roadmap, es el siguiente ticket).
+- **Límite de peticiones:** token bucket en memoria, activo solo en el perfil de producción. Con usuarios reales: Redis y cuotas por usuario y plan, porque con varias réplicas el contador en memoria no sirve.
+- **Secretos:** variables de entorno del proveedor y un fichero con permisos 600 en el servidor. Con usuarios reales: gestor de secretos con rotación y auditoría de accesos.
+- **Autenticación:** JWT propio (HS256) con aislamiento por usuario verificado en cada endpoint. Con usuarios reales: proveedor de identidad, segundo factor y registro de auditoría.
+
+Lo que **no** cambia entre los dos escenarios es lo que de verdad se evalúa aquí: arquitectura por capas con el dominio aislado de la infraestructura, **239 tests** con integración real sobre PostgreSQL, contrato de errores consistente, aislamiento de datos entre usuarios comprobado con tests, verificación en producción de cada cambio, ADRs con alternativas evaluadas y un README que no miente sobre lo que hay. Cambiar de escenario es cambiar de plan y de proveedor; no es rehacer el diseño.
+
 ## 📚 Documentación
 
 - [ADR 001: Stack Tecnológico](docs/adr/001-stack-tecnologico.md) — decisión inicial de stack.
@@ -68,6 +87,10 @@ graph LR
 - [ADR 005: Búsqueda asistida de manuales y descarga selectiva](docs/adr/005-busqueda-asistida-manuales.md) — DuckDuckGo HTML en vez de API de pago, validación SSRF al descargar y errores explícitos por motivo.
 - [ADR 006: Chat RAG por vehículo con pgvector](docs/adr/006-chat-rag-por-vehiculo.md) — persistencia de vectores por JDBC nativo, búsqueda por coseno restringida al vehículo y LLM con fuentes verificables.
 - [ADR 007: Alertas de mantenimiento por vehículo](docs/adr/007-alertas-mantenimiento.md) — CRUD anidado, lógica de repetitividad y revisión de vencidas.
+- [ADR 008: Autenticación JWT y multi-tenencia](docs/adr/008-autenticacion-jwt-multi-tenencia.md) — cada usuario solo ve y toca sus vehículos.
+- [ADR 009: Plataformas de despliegue](docs/adr/009-plataformas-despliegue.md) — Render, Neon y dominio propio con HTTPS, con las alternativas descartadas y su coste.
+- [ADR 010: Almacenamiento de manuales en objetos (S3/R2)](docs/adr/010-almacenamiento-objetos-s3.md) — el disco del contenedor es efímero; los manuales van a un servicio de objetos.
+- [ADR 011: Modelos gratuitos y coste cero como decisión explícita](docs/adr/011-modelos-gratuitos-y-coste-cero.md) — qué se decide por presupuesto y qué por criterio de ingeniería, y cuándo se revisa.
 - [docs/HISTORY.md](docs/HISTORY.md) — evolución y decisiones descartadas.
 - [docs/METRICS.md](docs/METRICS.md) — qué cubren los tests (no solo cuántos).
 - [docs/ROADMAP.md](docs/ROADMAP.md) — plan honesto de fases futuras.

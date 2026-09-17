@@ -48,7 +48,9 @@ No hay frontend separado: la UI (`index.html`) la sirve el propio backend.
 | `DB_USERNAME` | usuario de Neon |
 | `DB_PASSWORD` | contraseña de Neon |
 | `JWT_SECRET` | cadena aleatoria de al menos 32 caracteres |
-| `OPENROUTER_API_KEY` | tu clave de OpenRouter |
+| `OPENROUTER_API_KEY` | tu clave de OpenRouter (con tope de gasto configurado en la clave) |
+| `MECANIA_CHAT_MODEL` | opcional; modelo del chat. Por defecto `openai/gpt-4o-mini`. En el despliegue personal se usa una variante gratuita (`nvidia/nemotron-3-ultra-550b-a55b:free`), ver ADR-011 |
+| `MECANIA_CHAT_MAX_TOKENS` | opcional; tope de tokens de la respuesta (800 por defecto). Sin este tope el proveedor reserva el máximo del modelo y devuelve 402 si el saldo no cubre la reserva |
 | `MECANIA_STORAGE_TIPO` | `s3` (sin esto los manuales se guardan en el disco efímero del contenedor y se pierden en cada despliegue) |
 | `MECANIA_S3_BUCKET` | nombre del bucket (ej. `mecania-manuales`) |
 | `MECANIA_S3_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |

@@ -56,6 +56,14 @@ Plan honesto de lo que viene, lo que se pospone y lo que no haremos.
 - ~~Documentación de pasos para desplegar en producción.~~ ✅ `docs/DEPLOY.md` + `Dockerfile` + `render.yaml`
 - ~~Desplegar a un servicio managed (Render + Neon):~~ ✅ en producción desde 2026-09-16 en `https://mecania.kavanasystems.com` (Render Docker Frankfurt + Neon PostgreSQL 16 con pgvector), desplegado por API y verificado end-to-end (registro → vehículo → subida → `LISTO` → chat con fuentes).
 
+## Pendientes conocidos (declarados, no sorpresas)
+
+- **Flyway y migraciones versionadas**: producción sigue con `ddl-auto=update` (ver ADR-011 y la sección del README). Es el siguiente ticket técnico.
+- **Lista de modelos de respaldo**: si el modelo gratuito del chat devuelve `429` del proveedor de origen, hoy no hay alternativa automática. La solución es una lista de modelos en la misma variable de configuración.
+- **Borrado de objetos**: `eliminarArchivo` está implementado, pero no hay endpoint de borrado de documentos y borrar un vehículo no borra sus manuales del bucket. Declarado en el ADR-010.
+- **Uniformar PostgreSQL**: desarrollo en PG 15 (imagen fijada) y producción en PG 16. Documentado en el ADR-009.
+- **No es gratis lo que parece**: los embeddings son de pago aunque cuesten céntimos; el motivo y los números están en el ADR-011.
+
 ## Lo que NO haremos (por ahora o nunca)
 - **APIs de búsqueda de pago** (Tavily, AIsa, Brave Search): la búsqueda de manuales usa el HTML público de DuckDuckGo con Jsoup (Fase 3, ADR 005) para no consumir saldo del titular del proyecto.
 - **Motor de inferencia local de LLMs**: manteneremos la integración vía API (OpenRouter) para evitar complejidad de GPU y licencias en el MVP.
