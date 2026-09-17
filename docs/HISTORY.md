@@ -24,6 +24,7 @@ Evolución del proyecto Mecania y decisiones descartadas.
     - **docker-compose**: imagen de Postgres de desarrollo fijada a PG15 (el `latest` era una etiqueta móvil); producción sigue en Neon PG16.
     - **Contenedor sin root + HEALTHCHECK** en el `Dockerfile`, y `src/test` fuera del contexto de build (builds más rápidos).
     - **Operación**: vigilante externo de `/health/ready` cada 10 min (cron D5, aguanta el arranque en frío de 30-90 s para no dar falsos positivos y avisa por Telegram con cooldown), backup diario de la BD a R2 (`backups/`, rotación a 7) y **auto-deploy** activado en `main`.
+- **Rate limiting de `/api/**` por IP** — commit `61b9209` (ticket D2): token bucket en memoria sobre `/api/**` (120 peticiones/min) y más estricto en `/api/auth/**` (10/min, el punto de fuerza bruta). Al pasarse: **429 `{"error":"demasiadas_peticiones"}` + `Retry-After`**. Apagado por defecto y encendido SOLO en el perfil `prod` (para que la suite no tope contra un límite global); el filtro se registra en `SecurityConfig` (un `@Component` con esa dependencia rompía los `@WebMvcTest`, que no escanean componentes). Verificado en producción: 10 login → 401, siguientes → 429 con `Retry-After: 6`.
 
 ## 2026-09-16 (Fase 7: despliegue y monitoreo)
 
