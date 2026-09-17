@@ -30,9 +30,20 @@ public class SecurityConfig {
     }
 
     @Bean
+    public RateLimitProperties rateLimitProperties() {
+        return new RateLimitProperties();
+    }
+
+    @Bean
+    public RateLimitFilter rateLimitFilter(RateLimitProperties props) {
+        return new RateLimitFilter(props);
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
+            RateLimitFilter rateLimitFilter,
             @Value("${mecania.auth.enabled:true}") boolean authEnabled) throws Exception {
         http.csrf(csrf -> csrf.disable());
 
@@ -60,6 +71,7 @@ public class SecurityConfig {
                             .requestMatchers("/api/auth/**").permitAll()
                             .requestMatchers("/api/**").authenticated()
                             .anyRequest().permitAll())
+                    .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                     .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
