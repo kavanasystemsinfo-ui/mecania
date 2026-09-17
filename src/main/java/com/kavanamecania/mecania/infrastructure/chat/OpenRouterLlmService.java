@@ -34,14 +34,17 @@ public class OpenRouterLlmService implements LlmService {
     private final String baseUrl;
     private final String model;
     private final String apiKey;
+    private final int maxTokens;
 
     public OpenRouterLlmService(
             @Value("${mecania.chat.base-url:https://openrouter.ai/api/v1}") String baseUrl,
             @Value("${mecania.chat.model:openai/gpt-4o-mini}") String model,
+            @Value("${mecania.chat.max-tokens:800}") int maxTokens,
             @Value("${mecania.chat.api-key:}") String apiKeyProperty,
             RestTemplate chatRestTemplate) {
         this.baseUrl = baseUrl;
         this.model = model;
+        this.maxTokens = maxTokens;
         this.restTemplate = chatRestTemplate;
 
         if (apiKeyProperty == null || apiKeyProperty.isBlank()) {
@@ -71,6 +74,10 @@ public class OpenRouterLlmService implements LlmService {
         Map<String, Object> body = Map.of(
                 "model", model,
                 "temperature", 0.2,
+                // Sin tope explícito, OpenRouter reserva el máximo del modelo
+                // (16.384 tokens en gpt-4o-mini) y responde 402 si el saldo no
+                // cubre esa reserva, aunque la respuesta real sea de 200 tokens.
+                "max_tokens", maxTokens,
                 "messages", List.of(
                         Map.of("role", "system", "content", promptSistema),
                         Map.of("role", "user", "content", promptUsuario)

@@ -5,7 +5,7 @@ Qué cubren los tests, no solo cuántos.
 ## Resumen
 
 Suite ejecutada con `mvn verify` (2026-09-17):
-**237 tests en 35 suites — todos verdes** (200 unitarios en `mvn test` + 37 de
+**239 tests en 36 suites — todos verdes** (202 unitarios en `mvn test` + 37 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
@@ -36,6 +36,9 @@ suite, no de contar `@Test` con grep.
 
 ### Capa de servicio de chat RAG (ChatManualesServiceTest)
 - **4 tests**: respuesta con los fragmentos relevantes devolviendo las fuentes; sin fragmentos por encima del umbral → "sin base" SIN llamar al LLM; descarte de fragmentos por debajo de `mecania.chat.similitud-minima` (el prompt no incluye el irrelevante); propagación del fallo del LLM.
+
+### Capa de proveedor de chat (OpenRouterLlmServiceTest)
+- **2 tests**: la petición incluye un `max_tokens` acotado (`mecania.chat.max-tokens`, 800 por defecto) en lugar de dejar que OpenRouter reserve el máximo del modelo — sin él, una cuenta con saldo pequeño recibe **402** y el chat responde 503 aunque la respuesta real sea de 200 tokens; y un 402 del proveedor se traduce en `LlmException` con mensaje propio.
 
 ### Capa de seguridad — JWT (JwtServiceTest)
 - **6 tests**: token válido devuelve la identidad; token manipulado, de otro secreto o caducado → inválido; secreto demasiado corto o vacío → rechazado en construcción.
