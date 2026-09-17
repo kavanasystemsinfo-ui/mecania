@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Qué implementación de {@link AlmacenamientoArchivos} se registra según
- * {@code mecanic.storage.tipo}.
+ * {@code mecania.storage.tipo}.
  *
  * <p>Existe por un fallo real: los dos almacenes estaban anotados sin condición y
  * arrancar con {@code storage.tipo=s3} reventaba con "required a single bean, but

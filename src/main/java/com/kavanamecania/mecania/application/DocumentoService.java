@@ -71,7 +71,7 @@ public class DocumentoService {
                     ". Soportados: PDF, TXT, DOCX");
         }
 
-        // Validate size against the configured limit (see mecanic.upload.max-bytes)
+        // El límite no está hardcodeado: sale de mecania.upload.max-bytes (application.properties)
         if (file.getSize() > maxUploadBytes) {
             throw new ArchivoDemasiadoGrandeException("Archivo demasiado grande: " + file.getSize() +
                     " bytes. Máximo permitido: " + maxUploadBytes + " bytes ("
