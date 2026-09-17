@@ -196,7 +196,7 @@ curl -X POST http://localhost:8080/api/vehiculos/1/alertas \
 
 Listar: `GET /api/vehiculos/1/alertas`. Revisar vencidas (devuelve y desactiva/avanza): `GET /api/vehiculos/1/alertas/vencidas`. Ver [ADR 007](docs/adr/007-alertas-mantenimiento.md).
 
-> En la fase MVP todos los endpoints están abiertos (`permitAll()`). Ver [ADR 002](docs/adr/002-seguridad-abierta-mvp.md) para detalles.
+> Desde la Fase 6 hay autenticación real: `POST /api/auth/register` y `login` (abiertos), el resto de `/api/**` exige un token JWT y cada usuario solo ve/toca sus vehículos; sin token → 401. El ADR-002 (seguridad abierta del MVP) quedó **sustituido** por el [ADR 008](docs/adr/008-autenticacion-jwt-multi-tenencia.md).
 
 ## 📖 Aprendizajes clave
 
@@ -210,11 +210,11 @@ Durante la construcción inicial de Mecania, estos fueron aprendizajes concretos
 
 ## 🔓 Transparencia sobre limitaciones
 
-- **Seguridad:** En la fase actual, Mecania corre con seguridad abierta (`permitAll()`) para facilitar pruebas y demos. Esto **NO es apto para producción**. Ver ADR 002 para detalles y plan futuro.
+- **Seguridad:** autenticación JWT obligatoria en `/api/**` (excepto registro/login) y multi-tenencia por usuario; sin token → 401. El ADR-002 (seguridad abierta del MVP) quedó sustituido por el ADR-008. El `JWT_SECRET` no tiene valor por defecto: sin la variable, la app falla al arrancar.
 - **Frontend:** La interfaz Bootstrap es funcional pero mínima; se centra en demostrar la API, no en habilidades de diseño UI/UX.
 - **Búsqueda de manuales y LLM:** la búsqueda de manuales usa el HTML público de DuckDuckGo (ADR 005): puede fallar si el buscador bloquea la petición, y por eso existe el camino alternativo de pegar la URL a mano. El chat RAG (Fase 4) responde solo con los manuales del vehículo vía pgvector + OpenRouter y devuelve las fuentes; si no hay contexto relevante, responde "sin base" en vez de inventar (ADR 006).
 - **Alertas de mantenimiento:** la notificación es un log de consola (no hay email/push todavía) y la revisión de vencidas es manual vía endpoint (ADR 007).
-- **Autenticación de usuario:** aún no hay endpoints de registro/login; se añadirán cuando sea necesario demostrar manejo de identidad y multi-tenencia.
+- **Autenticación de usuario:** `POST /api/auth/register` y `POST /api/auth/login` devuelven un token JWT (caducidad 24 h); los endpoints protegidos exigen `Authorization: Bearer <token>` (ADR 008).
 
 ## 🙏 Créditos
 
@@ -222,4 +222,4 @@ Proyecto diseñado con criterio arquitectónico propio.
 
 --- 
 
-*Última actualización: 2026-09-16*
+*Última actualización: 2026-09-17*

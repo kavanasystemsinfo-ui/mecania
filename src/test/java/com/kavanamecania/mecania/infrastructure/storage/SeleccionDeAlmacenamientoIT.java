@@ -23,6 +23,7 @@ class SeleccionDeAlmacenamientoIT {
 
     @SpringBootTest
     @ActiveProfiles("test")
+    @TestPropertySource(properties = "mecania.storage.tipo=local")
     @Nested
     class PorDefecto {
 

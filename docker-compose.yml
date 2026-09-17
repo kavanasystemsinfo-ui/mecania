@@ -1,6 +1,11 @@
 services:
   postgres:
-    image: ankane/pgvector:latest
+    # Fijada a PG 15 a propósito: el contenedor de preproducción ya corre 15.x y
+    # la imagen 'latest' es una etiqueta móvil (dos arranques con meses de
+    # diferencia pueden traer versiones distintas sin que nada lo avise). La
+    # producción usa Neon PostgreSQL 16. Migrar este contenedor de desarrollo a
+    # PG 16 es un paso aparte que pasa por recrearlo y volcar los datos.
+    image: pgvector/pgvector:pg15
     container_name: mecania-postgres
     restart: unless-stopped
     environment:

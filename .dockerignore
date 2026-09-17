@@ -5,3 +5,4 @@ logs/
 *.md
 Dockerfile
 docker-compose.yml
+src/test
