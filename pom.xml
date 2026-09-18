@@ -16,7 +16,7 @@
 	<properties>
 		<java.version>21</java.version>
 		<!-- Versions of dependencies -->
-		<postgresql.version>42.7.11</postgresql.version>
+		<postgresql.version>42.7.12</postgresql.version>
 		<lombok.version>1.18.34</lombok.version>
 		<testcontainers.version>1.19.8</testcontainers.version>
 		<pdfbox.version>3.0.3</pdfbox.version>
