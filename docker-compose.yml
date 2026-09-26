@@ -16,7 +16,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"
+      # Solo en loopback, igual que en kavana-manufacturing: publicar en todas
+      # las interfaces deja la base alcanzable desde internet, porque Docker
+      # antepone sus reglas a las de ufw.
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mecania -d mecania"]
       interval: 10s
