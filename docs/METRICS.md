@@ -5,14 +5,14 @@ Qué cubren los tests, no solo cuántos.
 ## Resumen
 
 Suite ejecutada con `mvn verify` (2026-09-17):
-**239 tests en 36 suites — todos verdes** (202 unitarios en `mvn test` + 37 de
+**239 tests en 36 suites: todos verdes** (202 unitarios en `mvn test` + 37 de
 integración con failsafe). Las cifras de este archivo salen de ejecutar la
 suite, no de contar `@Test` con grep.
 
 ### Capa de controlador (VehiculoControllerTest)
 - **5 tests**: endpoints REST del vehículo (listado del usuario autenticado, obtención por ID, creación exitosa, validación fallida → 400 con `fields`, y 404 por ID inexistente).
 
-### Capa de controlador — integración (VehiculoControllerIT, BusquedaManualesControllerIT, AlertaControllerIT)
+### Capa de controlador: integración (VehiculoControllerIT, BusquedaManualesControllerIT, AlertaControllerIT)
 - **VehiculoControllerIT (3)**: flujo real con contexto Spring (CRUD de vehículos sobre BD H2, validación de errores HTTP).
 - **AlertaControllerIT (2)**: flujo crear/listar/actualizar/eliminar (201/200/404/204) y revisión de vencidas que devuelve la alerta vencida y la deja desactivada.
 - **BusquedaManualesControllerIT (11)**: contrato HTTP de la Fase 3 con el buscador y el descargador mockeados: candidatos devueltos sin descargar nada, consulta libre traducida a "Toyota Corolla 2018 manual cambio de aceite", 503 con `buscador_no_disponible` cuando el buscador bloquea, 404 si el vehículo no existe, 201 al importar, 400 con URL vacía (validación) y con URL no http, 415 con tipo no soportado, 413 con archivo demasiado grande, 404 en importación de vehículo inexistente y **200 con `yaExistia: true` al reimportar sin duplicar documentos**.
@@ -29,7 +29,7 @@ suite, no de contar `@Test` con grep.
 
 ### Capa de servicio de documentos (DocumentoServiceTest)
 - **9 tests**: subida (PDF válido, TXT válido, extensión no soportada, vehículo inexistente, **un byte por encima del límite → `ArchivoDemasiadoGrandeException` y exactamente en el límite → aceptado**), listado, pertenencia del documento al vehículo. El límite no está en el código: sale de `mecania.upload.max-bytes`, así que los tests de frontera construyen el servicio con un límite pequeño y no reservan 25 MB de heap.
-- **Clave**: los tests de subida verifican que se publica el evento `DocumentoSubidoEvent` con el id correcto (el procesamiento async NO se llama directo — se dispara por listener AFTER_COMMIT, ver ADR 004).
+- **Clave**: los tests de subida verifican que se publica el evento `DocumentoSubidoEvent` con el id correcto (el procesamiento async NO se llama directo: se dispara por listener AFTER_COMMIT, ver ADR 004).
 
 ### Capa de servicio de búsqueda asistida (BusquedaManualesServiceTest)
 - **13 tests**: construcción de la consulta (marca, modelo, año, "manual" y consulta libre, ignorando espacios), candidatos devueltos tal cual, vehículo inexistente → error sin llamar al buscador, fallo del buscador propagado sin disfrazar, importación que descarga/guarda/crea documento y publica el evento, normalización por `trim` de la URL pegada, **reimportación que devuelve el existente sin descargar ni publicar evento**, descarga fallida que no crea documento ni escribe archivo, y fallo de escritura envuelto con mensaje explícito.
@@ -38,9 +38,9 @@ suite, no de contar `@Test` con grep.
 - **4 tests**: respuesta con los fragmentos relevantes devolviendo las fuentes; sin fragmentos por encima del umbral → "sin base" SIN llamar al LLM; descarte de fragmentos por debajo de `mecania.chat.similitud-minima` (el prompt no incluye el irrelevante); propagación del fallo del LLM.
 
 ### Capa de proveedor de chat (OpenRouterLlmServiceTest)
-- **2 tests**: la petición incluye un `max_tokens` acotado (`mecania.chat.max-tokens`, 800 por defecto) en lugar de dejar que OpenRouter reserve el máximo del modelo — sin él, una cuenta con saldo pequeño recibe **402** y el chat responde 503 aunque la respuesta real sea de 200 tokens; y un 402 del proveedor se traduce en `LlmException` con mensaje propio.
+- **2 tests**: la petición incluye un `max_tokens` acotado (`mecania.chat.max-tokens`, 800 por defecto) en lugar de dejar que OpenRouter reserve el máximo del modelo: sin él, una cuenta con saldo pequeño recibe **402** y el chat responde 503 aunque la respuesta real sea de 200 tokens; y un 402 del proveedor se traduce en `LlmException` con mensaje propio.
 
-### Capa de seguridad — JWT (JwtServiceTest)
+### Capa de seguridad: JWT (JwtServiceTest)
 - **6 tests**: token válido devuelve la identidad; token manipulado, de otro secreto o caducado → inválido; secreto demasiado corto o vacío → rechazado en construcción.
 
 ### Capa de servicio de autenticación (AuthServiceTest)
@@ -49,40 +49,40 @@ suite, no de contar `@Test` con grep.
 ### Capa de servicio de alertas (AlertaServiceTest)
 - **10 tests**: crear (ok y vehículo inexistente), listar, actualizar (ok y no encontrada → `AlertaNotFoundException`), eliminar (ok y no encontrada), vencidas (única desactivada, mensual avanza, sin vencidas vacío).
 
-### Capa de dominio — chunking (SlidingWindowChunkerTest)
+### Capa de dominio: chunking (SlidingWindowChunkerTest)
 - **11 tests**: null/vacío, texto corto, tamaño exacto, overlap correcto, determinismo, tamaño máximo, validación de constructor (overlap >= chunkSize, negativo, chunkSize <= 0), overlap cero.
 
-### Capa de dominio — embeddings (EmbeddingTest)
+### Capa de dominio: embeddings (EmbeddingTest)
 - **5 tests**: construcción + inmutabilidad defensiva, null/vacío rechazados, formato pgvector, equals por contenido.
 
-### Capa de dominio — alertas (RevisorAlertasTest)
+### Capa de dominio: alertas (RevisorAlertasTest)
 - **7 tests**: lista vacía, futura no devuelta, inactiva no devuelta, única vencida devuelta y desactivada, mensual avanza un mes, anual salta ocurrencias pasadas, mensual muy vencida salta hasta el futuro.
 
-### Capa de infraestructura — extracción (3 suites)
+### Capa de infraestructura: extracción (3 suites)
 - **PdfBoxTextExtractorTest (3)**: PDF extraído, PDF corrupto → ExtractionException, contenido vacío.
 - **PlainTextExtractorTest (5)**: TXT UTF-8, vacío, binario, null.
 - **TextExtractorFactoryTest (4)**: selección por tipo, tipo sin extractor → error.
 
-### Capa de infraestructura — búsqueda (ParserResultadosDdgTest, DuckDuckGoBuscadorManualesTest)
+### Capa de infraestructura: búsqueda (ParserResultadosDdgTest, DuckDuckGoBuscadorManualesTest)
 - **ParserResultadosDdgTest (11)**: HTML fijo con la estructura real de DDG → título/URL/fragmento/fuente; resolución del redirect `uddg` (nunca se devuelve un enlace de duckduckgo.com); marcado de PDFs; limpieza de etiquetas y entidades; bloques sin título o sin URL ignorados; lista vacía sin resultados, con HTML vacío y con null; deduplicación por URL; tope de resultados; enlaces absolutos sin redirección; y **filtrado de los anuncios** (`/y.js?ad_domain=...`) detectado contra DDG real.
 - **DuckDuckGoBuscadorManualesTest (7)**: contra un servidor local que imita a DDG → candidatos parseados, lista vacía cuando de verdad no hay resultados, consulta codificada y cabeceras de navegador enviadas (sin UA de navegador DDG devuelve su anti-bot), **challenge anti-bot → `BusquedaException` con "bloqueado"** (nunca lista vacía), error HTTP 500 explícito, sin conexión → error claro y tope de resultados respetado.
 
-### Capa de infraestructura — descarga (HttpDescargadorUrlTest, ValidadorHostsPublicosTest)
+### Capa de infraestructura: descarga (HttpDescargadorUrlTest, ValidadorHostsPublicosTest)
 - **HttpDescargadorUrlTest (20)**: PDF con nombre/tipo/bytes correctos, nombre del `Content-Disposition`, tipo por extensión cuando el `Content-Type` es genérico, TXT, tipo no soportado → 415, por encima del tope de bytes → 413, HTTP 404 → error de red con el código en el mensaje, **HTTP 403 con la pista de que el origen bloquea descargas automatizadas (caso real de w3.org)**, URLs inválidas o con esquema no http (`file://`, `ftp://`, `javascript:`, vacío, texto suelto, null), host privado rechazado con el validador real, redirección seguida con URL final correcta, **cada salto de la redirección pasa por el validador**, exceso de redirecciones, sin conexión → error claro, y `Content-Disposition` que intenta escapar de la carpeta reducido a nombre base.
 - **ValidadorHostsPublicosTest (17)**: 12 casos de host rechazado (loopback, `localhost`, IPv6 loopback, 0.0.0.0, 10.x, 172.16-31.x, 192.168.x, 169.254.169.254 de metadatos, `metadata.google.internal`), 3 hosts públicos aceptados, host sin nombre rechazado y el validador permisivo de desarrollo aceptando loopback.
 
-### Capa de infraestructura — embeddings (OpenRouterEmbeddingServiceTest)
+### Capa de infraestructura: embeddings (OpenRouterEmbeddingServiceTest)
 - **7 tests**: llamada correcta con MockRestServiceServer (URL, método, header Bearer, content-type), texto vacío/null, error 500, respuesta vacía, dimensión configurada, dimensión diferente avisa pero no falla.
 
-### Capa de infraestructura — almacenamiento (AlmacenamientoDiscoLocalTest)
+### Capa de infraestructura: almacenamiento (AlmacenamientoDiscoLocalTest)
 - **18 tests**: guardar/leer/eliminar reales con tempdir, subdirectorio vacío, **3 tests de seguridad** (nombre con `../` se sanitiza y no escapa del baseDir; lectura y borrado con rutas traviesas se rechazan), hardening de nombres especiales (`/`, `.`, `..`, byte NUL) y rutas que colapsan sobre la raíz, más **5 tests de la vía `guardarArchivo(byte[])`** que usa la importación desde internet: escritura real, nombre travieso saneado, nombres especiales, contenido vacío rechazado y subdirectorio que escapa rechazado.
 
-### Capa de infraestructura — almacenamiento en objetos (AlmacenamientoS3Test, AlmacenamientoContratoTest)
+### Capa de infraestructura: almacenamiento en objetos (AlmacenamientoS3Test, AlmacenamientoContratoTest)
 - **AlmacenamientoS3Test (14)**: cliente S3 mockeado, así que se prueba el comportamiento del adaptador y no la red del proveedor: clave construida a partir del subdirectorio (`vehiculos/7/documentos/manual.pdf`), bucket y content-type de la petición, nombre travieso (`../../../etc/passwd` → `passwd`), subdirectorio con `..` o absoluto rechazado **sin llamar al proveedor**, contenido vacío rechazado en las dos vías, subida de bytes descargados de internet, lectura completa, **lectura en flujo**, objeto inexistente → error claro, fallo del proveedor envuelto con su mensaje (y sin reventar cuando la excepción no trae detalles), borrado por clave, `disponible()` según `headBucket` y validación del nombre del bucket.
 - **AlmacenamientoContratoTest (3)**: las **dos** implementaciones a la vez. El mismo nombre produce la misma ruta relativa en disco y en el bucket (incluidos `../../etc/passwd`, `/absoluto/manual.txt`, `.`, `..` y `carpeta/manual.txt`), los dos rechazan un subdirectorio que escapa y los dos rechazan contenido vacío. Es la red que impide que la sanitización de un backend se separe de la del otro.
 - **SeleccionDeAlmacenamientoIT (2)**: sin configuración se registra el disco local; con `mecania.storage.tipo=s3` se registra el almacén de objetos y el contexto arranca. Existe por un fallo real: con los dos beans sin condición, arrancar en modo S3 reventaba con *"required a single bean, but 2 were found"*.
 
-### Capa de infraestructura — procesamiento (DocumentoProcessorIT)
+### Capa de infraestructura: procesamiento (DocumentoProcessorIT)
 - **5 tests de integración** (sobre H2, perfil `test`): extrae→chunckea→persiste fragmentos, error sin API key marca documento ERROR sin fragmentos (espera determinista por polling, no Thread.sleep), **fallo a mitad** (embedding falla en el 2º fragmento → rollback real → CERO fragmentos), **se guarda un vector por fragmento** (id y embedding correctos) y **fallo del almacén de vectores revierte la transacción** (CERO fragmentos).
 
 ## Qué NO está cubierto actualmente (y por qué)

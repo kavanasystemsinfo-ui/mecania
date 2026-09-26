@@ -1,4 +1,4 @@
-# ADR 008 — Autenticación JWT y multi-tenencia
+# ADR 008: Autenticación JWT y multi-tenencia
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-09-16
